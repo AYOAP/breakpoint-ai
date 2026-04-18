@@ -1183,17 +1183,19 @@ export function BreakpointApp() {
   }
 
   return (
-    <div className="relative min-h-[100dvh] overflow-x-hidden">
+    <div className="relative min-h-[100dvh]">
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute inset-0 bg-grid bg-[size:48px_48px] opacity-[0.035]" />
+        <div className="absolute left-[-8rem] top-[-8rem] h-80 w-80 rounded-full bg-[#ff4d4f]/12 blur-3xl" />
+        <div className="absolute right-[-8rem] top-10 h-72 w-72 rounded-full bg-[#4c8dff]/12 blur-3xl" />
+        <div className="absolute bottom-[-10rem] left-1/3 h-80 w-80 rounded-full bg-[#ffa940]/10 blur-3xl" />
+        <div className="absolute inset-x-0 top-0 h-64 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),transparent)] opacity-70" />
+      </div>
       <CursorTrail />
-      <div className="absolute inset-0 bg-grid bg-[size:48px_48px] opacity-[0.035]" />
-      <div className="absolute left-[-8rem] top-[-8rem] h-80 w-80 rounded-full bg-[#ff4d4f]/12 blur-3xl" />
-      <div className="absolute right-[-8rem] top-10 h-72 w-72 rounded-full bg-[#4c8dff]/12 blur-3xl" />
-      <div className="absolute bottom-[-10rem] left-1/3 h-80 w-80 rounded-full bg-[#ffa940]/10 blur-3xl" />
-      <div className="absolute inset-x-0 top-0 h-64 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),transparent)] opacity-70" />
 
       <div
         className={cn(
-          "bp-shell relative mx-auto flex min-h-full w-full max-w-[1660px] flex-col px-3 py-2.5 sm:px-5 sm:py-3 lg:px-6",
+          "bp-shell relative z-[1] mx-auto flex min-h-full w-full max-w-[1660px] flex-col px-3 py-2.5 sm:px-5 sm:py-3 lg:px-6",
           isAnalysisPhase ? "bp-shell--analysis" : "",
           allowsStageScroll ? "bp-shell--scroll h-auto min-h-full" : "",
         )}
