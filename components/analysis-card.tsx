@@ -54,19 +54,19 @@ export function AnalysisCard({ title, items, icon: Icon, summary, tone }: Analys
       <div className={cn("absolute inset-0 opacity-80", styles.wash)} />
       <div className={cn("absolute inset-x-0 top-0 h-px", styles.line)} />
       <CardHeader className="pb-2">
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-3">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 space-y-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-[16px] border border-white/10 bg-white/[0.04]">
               <Icon className={cn("h-5 w-5", styles.icon)} />
             </div>
             <div>
               <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-foreground/48">Evaluation</div>
-              <CardTitle className="mt-2 text-[1.05rem]">{title}</CardTitle>
+              <CardTitle className="mt-2 break-words text-[1.05rem]">{title}</CardTitle>
             </div>
           </div>
           <div
             className={cn(
-              "rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.2em]",
+              "max-w-full rounded-full border px-2.5 py-1 text-center font-mono text-[10px] uppercase tracking-[0.2em]",
               styles.chip,
             )}
           >
@@ -87,7 +87,7 @@ export function AnalysisCard({ title, items, icon: Icon, summary, tone }: Analys
               >
                 {String(index + 1).padStart(2, "0")}
               </span>
-              <span>{item}</span>
+              <span className="min-w-0 break-words">{item}</span>
             </li>
           ))}
         </ul>

@@ -47,13 +47,15 @@
       #0f1115;
     font-family: "Space Grotesk", sans-serif;
     color: #e6eaf0;
-    min-height: 100vh;
+    min-height: 100%;
+    min-height: 100dvh;
     overflow-x: hidden;
+    position: relative;
   }
 
   body::before {
     content: "";
-    position: fixed;
+    position: absolute;
     inset: 0;
     pointer-events: none;
     background:
@@ -64,7 +66,7 @@
 
   body::after {
     content: "";
-    position: fixed;
+    position: absolute;
     inset: 0;
     pointer-events: none;
     background-image:

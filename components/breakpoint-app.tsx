@@ -477,11 +477,11 @@ function ClarificationCard({
   return (
     <Card className="overflow-hidden border-white/12 bg-[#0b0f15]/98 shadow-[0_28px_80px_rgba(0,0,0,0.28)]">
       <CardHeader className="pb-4">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <Badge variant="pressure" className="w-fit">
             Question {current} of {total}
           </Badge>
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-3">
             {voiceControl}
             <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
               Pressure Point
@@ -506,18 +506,18 @@ function ClarificationCard({
         />
         {statusSlot ? <div className="mt-3">{statusSlot}</div> : null}
         <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="text-sm leading-6 text-foreground/74">
+          <div className="min-w-0 text-sm leading-6 text-foreground/74">
             {interactive
               ? "This answer changes the final evaluation memo."
               : "The next prompt is moving into place."}
           </div>
           {interactive ? (
-            <div className="flex gap-3">
-              <Button variant="secondary" onClick={onReset}>
+            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+              <Button variant="secondary" onClick={onReset} className="w-full whitespace-normal sm:w-auto">
                 Start Over
                 <RotateCcw className="h-4 w-4" />
               </Button>
-              <Button size="lg" onClick={onSubmit}>
+              <Button size="lg" onClick={onSubmit} className="w-full whitespace-normal sm:w-auto">
                 {current === total ? "Pressure Test Venture" : "Lock Answer"}
                 <ArrowRight className="h-4 w-4" />
               </Button>
@@ -1183,7 +1183,7 @@ export function BreakpointApp() {
   }
 
   return (
-    <div className="relative min-h-[100svh] overflow-x-hidden">
+    <div className="relative min-h-[100dvh] overflow-x-hidden">
       <CursorTrail />
       <div className="absolute inset-0 bg-grid bg-[size:48px_48px] opacity-[0.035]" />
       <div className="absolute left-[-8rem] top-[-8rem] h-80 w-80 rounded-full bg-[#ff4d4f]/12 blur-3xl" />
@@ -1193,14 +1193,19 @@ export function BreakpointApp() {
 
       <div
         className={cn(
-          "bp-shell relative mx-auto flex min-h-[100svh] w-full max-w-[1660px] flex-col px-4 py-3 sm:px-5 lg:px-6",
+          "bp-shell relative mx-auto flex min-h-full w-full max-w-[1660px] flex-col px-3 py-2.5 sm:px-5 sm:py-3 lg:px-6",
           isAnalysisPhase ? "bp-shell--analysis" : "",
-          allowsStageScroll ? "bp-shell--scroll h-auto min-h-[100svh]" : "",
+          allowsStageScroll ? "bp-shell--scroll h-auto min-h-full" : "",
         )}
       >
-        <header className="bp-hero relative mb-3 shrink-0 overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(17,20,28,0.92),rgba(9,12,18,0.96))] px-4 py-4 shadow-[0_32px_90px_rgba(0,0,0,0.42)] lg:px-5">
+        <header className="bp-hero relative mb-3 shrink-0 overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(17,20,28,0.92),rgba(9,12,18,0.96))] px-3.5 py-3.5 shadow-[0_32px_90px_rgba(0,0,0,0.42)] sm:px-4 sm:py-4 lg:px-5">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,77,79,0.16),transparent_32%),radial-gradient(circle_at_top_right,rgba(76,141,255,0.12),transparent_30%)]" />
-          <div className="bp-hero-card relative flex items-center gap-4 rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.015))] p-4 sm:p-5">
+          <div
+            className={cn(
+              "bp-hero-card relative flex flex-col items-start gap-3 rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.015))] p-3.5 sm:flex-row sm:items-center sm:gap-4 sm:p-5",
+              phase === "define" ? "bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.012))]" : "",
+            )}
+          >
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px] border border-[#ff4d4f]/24 bg-[#ff4d4f]/12 text-[#ff7b7d] shadow-[0_0_40px_rgba(255,77,79,0.14)]">
               <Crosshair className="h-5 w-5" />
             </div>
@@ -1213,7 +1218,9 @@ export function BreakpointApp() {
           </div>
         </header>
 
-        <StepProgress currentStep={currentStep} />
+        <div className={cn(phase === "define" ? "hidden sm:block" : "")}>
+          <StepProgress currentStep={currentStep} />
+        </div>
 
         {error ? (
           <motion.div
@@ -1227,7 +1234,7 @@ export function BreakpointApp() {
 
         <motion.main
           className={cn(
-            "bp-main min-h-[520px]",
+            "bp-main min-h-[520px] min-w-0",
             allowsStageScroll
               ? "bp-main--scroll block overflow-visible"
               : "flex flex-1 overflow-visible lg:min-h-0",
@@ -1245,16 +1252,18 @@ export function BreakpointApp() {
                 transition={stageTransition}
                 className="bp-stage flex w-full min-h-0 items-start justify-center py-2 sm:py-3 lg:py-4"
               >
-                <Card className="bp-stage-card mx-auto flex w-full max-w-[980px] flex-col justify-center border-white/10 bg-[linear-gradient(180deg,rgba(20,24,32,0.96),rgba(8,10,14,0.98))]">
-                  <CardHeader className="bp-stage-header items-center pb-4 text-center">
-                    <Badge className="w-fit">Venture Intake</Badge>
-                    <CardTitle className="bp-stage-title text-balance text-[2rem] sm:text-[2.35rem]">
+                <Card className="bp-stage-card mx-auto flex w-full max-w-[940px] flex-col justify-center border-white/10 bg-[linear-gradient(180deg,rgba(20,24,32,0.96),rgba(8,10,14,0.98))]">
+                  <CardHeader className="bp-stage-header items-center pb-3 text-center">
+                    <Badge variant="pressure" className="w-fit">
+                      Venture Intake
+                    </Badge>
+                    <CardTitle className="bp-stage-title max-w-[16ch] text-balance text-[1.75rem] sm:text-[2.2rem]">
                       What are you thinking of building?
                     </CardTitle>
-                    <CardDescription className="bp-stage-desc max-w-2xl text-balance text-[15px]">
+                    <CardDescription className="bp-stage-desc max-w-[38rem] text-balance text-[15px]">
                       Give the system a startup idea, business model, or investment thesis. The clearer the mechanics, the sharper the breakpoints.
                     </CardDescription>
-                    <div className="mt-1 flex flex-wrap items-center justify-center gap-2.5">
+                    <div className="mt-1 hidden flex-wrap items-center justify-center gap-2.5 sm:flex">
                       {founderFocusAreas.map((area) => (
                         <div
                           key={area}
@@ -1266,11 +1275,11 @@ export function BreakpointApp() {
                     </div>
                   </CardHeader>
                   <CardContent className="bp-stage-content flex flex-col items-center gap-5">
-                    <div className="bp-intake-panel relative w-full max-w-[820px] rounded-[28px] border border-white/10 bg-[#0b0f15]/94 p-4 shadow-[0_24px_70px_rgba(0,0,0,0.28)]">
+                    <div className="bp-intake-panel relative w-full max-w-[820px] rounded-[28px] border border-white/10 bg-[#0b0f15]/94 p-4 shadow-[0_24px_70px_rgba(0,0,0,0.28)] sm:p-5">
                       <div className="absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,77,79,0.65),transparent)]" />
                       <div className="absolute right-0 top-0 h-36 w-36 bg-[radial-gradient(circle,rgba(255,77,79,0.12),transparent_72%)]" />
-                      <div className="relative flex items-center justify-between gap-3">
-                        <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                      <div className="relative flex flex-wrap items-center justify-between gap-3">
+                        <div className="min-w-0 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
                           Intake Channel
                         </div>
                         <Button
@@ -1279,6 +1288,7 @@ export function BreakpointApp() {
                           variant={isListening && voiceTarget === "idea" ? "danger" : "secondary"}
                           onClick={() => toggleVoiceCapture("idea")}
                           disabled={!speechSupported}
+                          className="whitespace-normal"
                         >
                           {isListening && voiceTarget === "idea" ? "Stop Voice" : "Voice Input"}
                           {isListening && voiceTarget === "idea" ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
@@ -1293,6 +1303,22 @@ export function BreakpointApp() {
                       />
 
                       <div className="mt-3">{renderVoiceStatus("idea")}</div>
+                      <p className="mt-3 text-sm leading-6 text-foreground/56">
+                        Start with the buyer, the offer, and why this wins instead of getting ignored.
+                      </p>
+                    </div>
+
+                    <div className="bp-utility-row w-full max-w-[820px] rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(255,255,255,0.015))] p-3 sm:p-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="min-w-0 text-left">
+                          <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-foreground/42">Next step</div>
+                          <p className="mt-1 text-sm leading-6 text-foreground/72">Set the venture stage, then let BreakPoint generate pressure questions.</p>
+                        </div>
+                        <Button size="lg" onClick={moveToCalibration} className="w-full whitespace-normal sm:w-auto">
+                        Calibrate Pressure Test
+                        <ArrowRight className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
 
                     {advisoryFlags.length ? (
@@ -1301,7 +1327,7 @@ export function BreakpointApp() {
                       </div>
                     ) : null}
 
-                    <div className="flex w-full max-w-[820px] flex-wrap items-center justify-center gap-2.5">
+                    <div className="flex w-full max-w-[820px] flex-wrap items-center justify-center gap-2.5 pt-1">
                       {sampleIdeas.map((sample) => (
                         <button
                           key={sample.label}
@@ -1313,18 +1339,11 @@ export function BreakpointApp() {
                               ideaTextareaRef.current?.focus();
                             }, 40);
                           }}
-                          className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm text-foreground/78 transition-all duration-200 hover:-translate-y-0.5 hover:border-white/18 hover:bg-white/[0.06]"
+                          className="rounded-full border border-white/10 bg-white/[0.025] px-3 py-1.5 text-sm text-foreground/62 transition-all duration-200 hover:-translate-y-0.5 hover:border-white/18 hover:bg-white/[0.05] hover:text-foreground/78"
                         >
                           {sample.label}
                         </button>
                       ))}
-                    </div>
-
-                    <div className="bp-utility-row flex w-full max-w-[820px] items-center justify-center">
-                      <Button size="lg" onClick={moveToCalibration}>
-                        Calibrate Pressure Test
-                        <ArrowRight className="h-4 w-4" />
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -1343,7 +1362,7 @@ export function BreakpointApp() {
                 <Card className="bp-stage-card mx-auto flex w-full max-w-[1120px] flex-col justify-center border-white/10 bg-[linear-gradient(180deg,rgba(20,24,32,0.96),rgba(8,10,14,0.98))]">
                   <CardHeader className="bp-stage-header items-center pb-4 text-center">
                     <Badge className="w-fit">Calibration</Badge>
-                    <CardTitle className="bp-stage-title text-balance text-[1.95rem] sm:text-[2.2rem]">
+                    <CardTitle className="bp-stage-title text-balance text-[1.72rem] sm:text-[2.1rem]">
                       How developed is this idea right now?
                     </CardTitle>
                     <CardDescription className="bp-stage-desc max-w-2xl text-balance text-[15px]">
@@ -1378,7 +1397,7 @@ export function BreakpointApp() {
                             )}
                           >
                             <div className="flex items-center justify-between gap-3">
-                              <div className="font-medium tracking-[-0.025em] text-foreground">{stage.label}</div>
+                              <div className="min-w-0 break-words font-medium tracking-[-0.025em] text-foreground">{stage.label}</div>
                               <div
                                 className={cn(
                                   "h-2.5 w-2.5 rounded-full transition-colors",
@@ -1393,8 +1412,8 @@ export function BreakpointApp() {
                     </div>
 
                     <div className="w-full max-w-[940px] rounded-[26px] border border-white/10 bg-[#0b0f15]/92 p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="min-w-0 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
                           Anything else the system should know before applying pressure?
                         </div>
                         {renderVoiceButton("stage_note")}
@@ -1407,7 +1426,7 @@ export function BreakpointApp() {
                         className="mt-3 min-h-[88px] border-white/8 bg-white/[0.02] text-[14px] leading-6"
                       />
                       <div className="mt-3">{renderVoiceStatus("stage_note")}</div>
-                      <div className="mt-2 flex items-center justify-between text-xs text-foreground/48">
+                      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-foreground/48">
                         <span>Optional. Keep it short and direct.</span>
                         <span>{stageNote.trim().length} / 240</span>
                       </div>
@@ -1420,7 +1439,7 @@ export function BreakpointApp() {
                     ) : null}
 
                     <div className="flex w-full max-w-[940px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <Button variant="secondary" onClick={() => setPhase("define")}>
+                      <Button variant="secondary" onClick={() => setPhase("define")} className="w-full whitespace-normal sm:w-auto">
                         Back to idea
                         <RotateCcw className="h-4 w-4" />
                       </Button>
@@ -1428,6 +1447,7 @@ export function BreakpointApp() {
                         size="lg"
                         onClick={() => void requestClarifications(idea, ideaStage, stageNote)}
                         disabled={!ideaStage || pendingAction === "clarify"}
+                        className="w-full whitespace-normal sm:w-auto"
                       >
                         {pendingAction === "clarify" ? "Preparing Pressure Points" : "Continue to pressure points"}
                         <ArrowRight className="h-4 w-4" />
@@ -1469,7 +1489,7 @@ export function BreakpointApp() {
 
                   <CardHeader className="bp-stage-header items-center pb-5 text-center">
                     <Badge className="w-fit">Clarify</Badge>
-                    <CardTitle className="bp-stage-title text-balance text-[1.9rem] sm:text-[2.15rem]">
+                    <CardTitle className="bp-stage-title text-balance text-[1.72rem] sm:text-[2.05rem]">
                       Now answer these clarification questions.
                     </CardTitle>
                     <CardDescription className="bp-stage-desc max-w-2xl text-balance text-[15px]">
@@ -1561,7 +1581,7 @@ export function BreakpointApp() {
                     <Badge variant="pressure" className="w-fit">
                       Pressure Test
                     </Badge>
-                    <CardTitle className="text-balance text-[1.85rem] sm:text-[2.15rem]">
+                    <CardTitle className="text-balance text-[1.72rem] sm:text-[2.05rem]">
                       The system is pressure testing the venture.
                     </CardTitle>
                     <CardDescription className="max-w-2xl text-[15px]">
@@ -1604,8 +1624,8 @@ export function BreakpointApp() {
                       </div>
                     </div>
 
-                    <div className="grid w-full max-w-[760px] gap-4 md:grid-cols-[1.35fr_1fr]">
-                      <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
+                    <div className="grid w-full max-w-[760px] gap-4 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+                      <div className="min-w-0 rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
                         <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
                           Venture Under Load
                         </div>
@@ -1613,7 +1633,7 @@ export function BreakpointApp() {
                           {idea}
                         </p>
                       </div>
-                      <div className="rounded-[24px] border border-[#ff4d4f]/18 bg-[#ff4d4f]/[0.08] p-4">
+                      <div className="min-w-0 rounded-[24px] border border-[#ff4d4f]/18 bg-[#ff4d4f]/[0.08] p-4">
                         <div className="flex items-center gap-2 text-[#ff8082]">
                           <Activity className="h-4 w-4" />
                           <span className="font-mono text-[11px] uppercase tracking-[0.22em]">System posture</span>
@@ -1642,7 +1662,7 @@ export function BreakpointApp() {
                     <Badge variant="pressure" className="w-fit">
                       Verdict
                     </Badge>
-                    <CardTitle className="text-balance text-[2rem] leading-[0.98] tracking-[-0.06em] sm:text-[2.55rem]">
+                    <CardTitle className="text-balance text-[1.85rem] leading-[0.98] tracking-[-0.06em] sm:text-[2.3rem] lg:text-[2.55rem]">
                       {verdictHeadline}
                     </CardTitle>
                     <CardDescription className="max-w-2xl text-[15px]">
@@ -1655,8 +1675,8 @@ export function BreakpointApp() {
                         <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
                           Invincibility Score
                         </div>
-                        <div className="mt-4 flex items-end justify-center gap-2">
-                          <span className={cn("text-[5rem] font-semibold leading-none tracking-[-0.12em] sm:text-[5.75rem]", scoreTone.text)}>
+                        <div className="mt-4 flex flex-wrap items-end justify-center gap-2">
+                          <span className={cn("text-[4.1rem] font-semibold leading-none tracking-[-0.12em] sm:text-[5.25rem] lg:text-[5.75rem]", scoreTone.text)}>
                             {breakdown.invincibility_score}
                           </span>
                           <span className="pb-4 text-sm text-foreground/58">/ 100</span>
@@ -1696,11 +1716,11 @@ export function BreakpointApp() {
                     </div>
 
                     <div className="flex w-full max-w-[820px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-center">
-                      <Button size="lg" onClick={() => setPhase("analysis")}>
+                      <Button size="lg" onClick={() => setPhase("analysis")} className="w-full whitespace-normal sm:w-auto">
                         Show me the breakdown
                         <ArrowRight className="h-4 w-4" />
                       </Button>
-                      <Button variant="secondary" onClick={resetWorkflow}>
+                      <Button variant="secondary" onClick={resetWorkflow} className="w-full whitespace-normal sm:w-auto">
                         Run another venture through BreakPoint
                         <RotateCcw className="h-4 w-4" />
                       </Button>
@@ -1721,16 +1741,16 @@ export function BreakpointApp() {
               >
                 <Card className="bp-stage-card flex flex-col overflow-visible border-white/10 bg-[linear-gradient(180deg,rgba(20,24,32,0.96),rgba(8,10,14,0.98))]">
                   <CardHeader className="bp-stage-header shrink-0 pb-2">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="font-mono text-[11px] uppercase tracking-[0.3em] text-foreground/46">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                      <div className="min-w-0 font-mono text-[11px] uppercase tracking-[0.3em] text-foreground/46">
                         BreakPoint evaluation memo
                       </div>
-                      <div className="flex flex-col gap-3 sm:flex-row">
-                        <Button variant="secondary" onClick={() => void copyBreakdown()}>
+                      <div className="flex min-w-0 flex-col gap-3 sm:flex-row">
+                        <Button variant="secondary" onClick={() => void copyBreakdown()} className="w-full whitespace-normal sm:w-auto">
                           {copyState === "copied" ? "Memo Copied" : "Copy Evaluation Memo"}
                           <Copy className="h-4 w-4" />
                         </Button>
-                        <Button variant="secondary" onClick={resetWorkflow}>
+                        <Button variant="secondary" onClick={resetWorkflow} className="w-full whitespace-normal sm:w-auto">
                           Run another venture through BreakPoint
                           <RotateCcw className="h-4 w-4" />
                         </Button>
@@ -1742,7 +1762,7 @@ export function BreakpointApp() {
                     <div className="space-y-6">
                       <div className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(7,9,13,0.96))] p-6 shadow-[0_28px_80px_rgba(0,0,0,0.28)] sm:p-7">
                         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
-                          <div>
+                          <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
                               <Badge variant="pressure" className="w-fit">
                                 Verdict
@@ -1751,7 +1771,7 @@ export function BreakpointApp() {
                                 Outcome before commitment
                               </div>
                             </div>
-                            <CardTitle className="mt-5 max-w-4xl text-balance text-[2.7rem] leading-[0.95] tracking-[-0.065em] text-foreground sm:text-[3.35rem]">
+                            <CardTitle className="mt-5 max-w-4xl text-balance text-[2.15rem] leading-[0.95] tracking-[-0.065em] text-foreground sm:text-[2.75rem] lg:text-[3.35rem]">
                               {verdictHeadline}
                             </CardTitle>
                             <div className="mt-6 max-w-4xl space-y-2">
@@ -1768,7 +1788,7 @@ export function BreakpointApp() {
                           </div>
 
                           {scoreTone ? (
-                            <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))] p-5 shadow-[0_24px_60px_rgba(0,0,0,0.2)]">
+                            <div className="min-w-0 rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))] p-5 shadow-[0_24px_60px_rgba(0,0,0,0.2)]">
                               <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
                                 Invincibility Score
                               </div>
@@ -1805,8 +1825,8 @@ export function BreakpointApp() {
                         </div>
                       </div>
 
-                      <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
-                        <div className="rounded-[28px] border border-white/10 bg-[#0b0f15]/90 p-5 shadow-[0_24px_70px_rgba(0,0,0,0.22)]">
+                      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+                        <div className="min-w-0 rounded-[28px] border border-white/10 bg-[#0b0f15]/90 p-5 shadow-[0_24px_70px_rgba(0,0,0,0.22)]">
                           <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
                             The gist of the venture
                           </div>
@@ -1815,7 +1835,7 @@ export function BreakpointApp() {
                           </p>
                         </div>
 
-                        <div className="rounded-[28px] border border-[#ffa940]/18 bg-[#ffa940]/[0.07] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.16)]">
+                        <div className="min-w-0 rounded-[28px] border border-[#ffa940]/18 bg-[#ffa940]/[0.07] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.16)]">
                           <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#ffcc94]">
                             Proof required before launch
                           </div>
@@ -1854,8 +1874,8 @@ export function BreakpointApp() {
                       </div>
                     </div>
 
-                    <div className="shrink-0 rounded-[26px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] px-4 py-4 md:flex md:items-center md:justify-between">
-                      <div>
+                    <div className="shrink-0 rounded-[26px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] px-4 py-4 md:flex md:items-center md:justify-between md:gap-4">
+                      <div className="min-w-0">
                         <div className="text-lg font-semibold tracking-[-0.03em] text-foreground">
                           Run another venture through BreakPoint
                         </div>
@@ -1863,8 +1883,8 @@ export function BreakpointApp() {
                           Reset the page and pressure test another startup idea, business model, or thesis.
                         </p>
                       </div>
-                      <div className="mt-3 md:mt-0">
-                        <Button size="lg" onClick={resetWorkflow}>
+                      <div className="mt-3 md:mt-0 md:shrink-0">
+                        <Button size="lg" onClick={resetWorkflow} className="w-full whitespace-normal md:w-auto">
                           Run another venture through BreakPoint
                           <RefreshCw className="h-4 w-4" />
                         </Button>

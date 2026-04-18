@@ -14,7 +14,7 @@ export function QuestionCard({ index, question, value, onChange }: QuestionCardP
   return (
     <Card className="flex h-full flex-col border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(10,13,18,0.96))]">
       <CardHeader className="gap-3 pb-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <span className="font-mono text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
             Assumption {String(index + 1).padStart(2, "0")}
           </span>
@@ -22,9 +22,9 @@ export function QuestionCard({ index, question, value, onChange }: QuestionCardP
             <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
           </div>
         </div>
-        <CardTitle className="text-base leading-7">{question}</CardTitle>
+        <CardTitle className="break-words text-base leading-7">{question}</CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-1">
+      <CardContent className="flex min-w-0 flex-1">
         <Textarea
           value={value}
           onChange={(event) => onChange(event.target.value)}

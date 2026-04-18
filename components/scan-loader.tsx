@@ -37,24 +37,24 @@ export function ScanLoader({ idea, answersCount }: ScanLoaderProps) {
           Step 3
         </Badge>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <div className="space-y-2">
-            <CardTitle className="text-2xl md:text-[2rem]">Apply Pressure</CardTitle>
+          <div className="min-w-0 space-y-2">
+            <CardTitle className="text-[1.7rem] sm:text-2xl md:text-[2rem]">Apply Pressure</CardTitle>
             <CardDescription className="max-w-2xl text-sm md:text-base">
               The system is stress testing the idea against the assumptions you just exposed.
             </CardDescription>
           </div>
-          <div className="rounded-[22px] border border-white/10 bg-white/[0.04] px-4 py-3 text-right">
+          <div className="min-w-0 rounded-[22px] border border-white/10 bg-white/[0.04] px-4 py-3 text-right">
             <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Input quality</div>
             <div className="mt-1 text-sm text-foreground">{answersCount} assumptions clarified</div>
           </div>
         </div>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col gap-4">
-        <div className="flex items-center gap-4 rounded-[24px] border border-white/10 bg-[#0b0f15]/90 px-4 py-4">
+        <div className="flex items-start gap-4 rounded-[24px] border border-white/10 bg-[#0b0f15]/90 px-4 py-4 sm:items-center">
           <div className="flex h-14 w-14 items-center justify-center rounded-[20px] border border-white/10 bg-white/[0.03]">
             <Radar className="h-5 w-5 animate-pulse text-[#4c8dff]" />
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Current pass</div>
             <motion.div
               key={statusMessages[messageIndex]}
@@ -86,12 +86,12 @@ export function ScanLoader({ idea, answersCount }: ScanLoaderProps) {
           ))}
         </div>
 
-        <div className="grid flex-1 gap-4 md:grid-cols-[1.4fr_1fr]">
-          <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
+        <div className="grid flex-1 gap-4 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+          <div className="min-w-0 rounded-[24px] border border-white/10 bg-white/[0.04] p-4">
             <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Submission under load</div>
             <p className="mt-3 whitespace-pre-wrap break-words text-sm leading-7 text-foreground/85">{idea}</p>
           </div>
-          <div className="rounded-[24px] border border-[#ff4d4f]/15 bg-[#ff4d4f]/[0.07] p-4">
+          <div className="min-w-0 rounded-[24px] border border-[#ff4d4f]/15 bg-[#ff4d4f]/[0.07] p-4">
             <div className="flex items-center gap-2 text-[#ff4d4f]">
               <ShieldAlert className="h-4 w-4" />
               <span className="font-mono text-[11px] uppercase tracking-[0.22em]">System posture</span>
