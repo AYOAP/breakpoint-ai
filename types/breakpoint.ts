@@ -20,6 +20,13 @@ export interface ClarificationPair {
   answer: string;
 }
 
+export interface AnalyzeRequestPayload {
+  idea: string;
+  stage: IdeaStageValue;
+  stage_note?: string;
+  answers: ClarificationPair[];
+}
+
 export interface ClarifyResponse {
   questions: string[];
 }

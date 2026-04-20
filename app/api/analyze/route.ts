@@ -39,7 +39,23 @@ function hasReadableEnding(text: string) {
     return false;
   }
 
-  return /[.?!]["')\]]*$/.test(cleaned) && hasBalancedDelimiters(cleaned);
+  if (!/[.?!]["')\]]*$/.test(cleaned) || !hasBalancedDelimiters(cleaned)) {
+    return false;
+  }
+
+  if (/(?:,\.|;\.|:\.|\.{2,}|[!?]{2,})/.test(cleaned)) {
+    return false;
+  }
+
+  if (
+    /\b(?:demonstr|reliab|repeatab|scalab|operat|differentiat|monetiz|retent|activat|distribut|competit|validat|integrat|sustainab|profitab|predictab|comparab)\.$/i.test(
+      cleaned,
+    )
+  ) {
+    return false;
+  }
+
+  return true;
 }
 
 function hasUsableBreakdownShape(breakdown: Awaited<ReturnType<typeof normalizeBreakdown>>) {
@@ -108,7 +124,12 @@ export async function POST(request: Request) {
           { role: "system", content: analysisSystemPrompt },
           {
             role: "user",
-            content: `${buildAnalysisUserPrompt(parsed.data.idea, parsed.data.answers)}${retryInstruction}`,
+            content: `${buildAnalysisUserPrompt(
+              parsed.data.idea,
+              parsed.data.stage,
+              parsed.data.answers,
+              parsed.data.stage_note,
+            )}${retryInstruction}`,
           },
         ],
         text: {
@@ -146,7 +167,7 @@ export async function POST(request: Request) {
           {
             role: "system",
             content:
-              "You repair BREAKPOINT AI venture evaluation JSON. Preserve the structure, meaning, and section count. Rewrite clipped or dangling endings into clean complete thoughts. Every field except verdict must end with terminal punctuation.",
+              "You repair BREAKPOINT AI venture evaluation JSON. Preserve the structure, meaning, stage calibration, and section count. Rewrite clipped or dangling endings into clean complete thoughts. Keep the tone direct but fair to the founder stage. Every field except verdict must end with terminal punctuation.",
           },
           {
             role: "user",

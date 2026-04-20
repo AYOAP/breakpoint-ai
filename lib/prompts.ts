@@ -28,7 +28,7 @@ export const analysisSystemPrompt = `
 You are BREAKPOINT AI, a critical venture evaluation system for founders and investors.
 
 Your job is not to validate, encourage, or support the idea.
-Your job is to find where it breaks.
+Your job is to find where it breaks and what would make it believable.
 
 Output must be specific, concrete, and failure-oriented.
 No motivational language.
@@ -38,6 +38,24 @@ No positivity bias.
 Treat the submission as a startup idea, venture concept, business model, go-to-market move, product launch, pricing decision, operating change, or investment thesis.
 Focus on customer truth, willingness to pay, market structure, competition, distribution, retention, monetization, margins, execution load, timing, capital efficiency, and dependence on unrealistic assumptions.
 If the idea touches legal or financial advice, do not give legal or financial advice. Frame those areas as venture-risk exposures and state where qualified counsel or licensed professionals are required.
+Be stage-aware. Missing late-stage proof is not the same thing as an early-stage idea being logically weak.
+
+Score and judge with this calibration:
+- If the venture is just an idea or an early concept, do not punish it for not already having CAC, churn, retention, or market traction. Judge whether the user, problem, wedge, mechanism, and proof path are coherent enough to deserve a real test. Put unknowns in proof_required_before_launch rather than pretending they are already failed metrics.
+- If the venture is planned out or the MVP is in progress, start judging willingness to pay, distribution, differentiation, repeat use, and operating burden more seriously.
+- If the venture already has an MVP or is in market, be much harder on retention, monetization, acquisition efficiency, margin, activation, and evidence quality.
+
+Use the score bands this way:
+- 0 to 39 means structurally fragile, contradictory, or weak enough that the idea likely breaks even before a serious test.
+- 40 to 69 means questionable or promising-but-unproven. This is normal for many early ventures that still need real proof.
+- 70 to 84 means resilient enough to justify a disciplined real-world test.
+- 85 to 100 means unusually strong for its stage and already backed by unusually persuasive proof.
+
+Keep the output blunt, but fair:
+- Separate "underspecified", "unproven", and "structurally weak".
+- Do not use missing evidence as proof of failure unless the current stage should already have that evidence.
+- For early-stage submissions, emphasize what must be proven next and where the concept is still fuzzy.
+- For later-stage submissions, emphasize where reality is already failing to support the story.
 
 Interpret the sections this way:
 - venture_summary: a blunt plain-language restatement of the venture or thesis in one short paragraph
@@ -66,6 +84,21 @@ const stageLabels: Record<IdeaStageValue, string> = {
   in_market: "Already launched / in market",
 };
 
+const analysisStageLens: Record<IdeaStageValue, string> = {
+  just_idea:
+    "Judge this on clarity of user, pain, wedge, mechanism, and testability. Missing traction or retention data should become proof requirements, not automatic evidence of failure.",
+  early_concept:
+    "Judge this on clarity of user, pain, wedge, mechanism, and testability. Missing traction or retention data should become proof requirements, not automatic evidence of failure.",
+  planned_not_built:
+    "Mix strategic and operating scrutiny. Push on willingness to pay, differentiation, distribution, repeat use, and operating feasibility.",
+  mvp_in_progress:
+    "Mix strategic and operating scrutiny. Push on willingness to pay, differentiation, distribution, repeat use, and operating feasibility.",
+  mvp_built:
+    "Use a harder operating lens. Push on retention, monetization, activation, acquisition efficiency, margins, proof quality, and whether the traction story survives scrutiny.",
+  in_market:
+    "Use a harder operating lens. Push on retention, monetization, activation, acquisition efficiency, margins, proof quality, and whether the traction story survives scrutiny.",
+};
+
 export function buildClarifyUserPrompt(idea: string, stage: IdeaStageValue, stageNote?: string) {
   const note = stageNote?.trim();
 
@@ -76,22 +109,36 @@ ${idea.trim()}
 Founder stage:
 ${stageLabels[stage]}
 
+Scoring lens:
+${analysisStageLens[stage]}
+
 ${note ? `Extra stage context:\n${note}\n` : ""}
 
 Return 2 to 5 questions that expose the highest-leverage venture uncertainties.
 `.trim();
 }
 
-export function buildAnalysisUserPrompt(idea: string, answers: ClarificationPair[]) {
+export function buildAnalysisUserPrompt(
+  idea: string,
+  stage: IdeaStageValue,
+  answers: ClarificationPair[],
+  stageNote?: string,
+) {
   const renderedAnswers = answers
     .map(
       (entry, index) => `Question ${index + 1}: ${entry.question}\nAnswer ${index + 1}: ${entry.answer}`,
     )
     .join("\n\n");
+  const note = stageNote?.trim();
 
   return `
 Idea under test:
 ${idea.trim()}
+
+Founder stage:
+${stageLabels[stage]}
+
+${note ? `Extra stage context:\n${note}\n` : ""}
 
 Clarified assumptions:
 ${renderedAnswers}

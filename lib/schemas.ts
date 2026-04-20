@@ -30,6 +30,13 @@ export const analyzeRequestSchema = z.object({
     .trim()
     .min(20, "Enter a fuller idea before running the stress test.")
     .max(6000, "The idea is too long. Tighten it before submitting."),
+  stage: stageSchema,
+  stage_note: z
+    .string()
+    .trim()
+    .max(240, "Keep the stage note short and direct.")
+    .optional()
+    .default(""),
   answers: z
     .array(
       z.object({
@@ -49,15 +56,15 @@ export const clarifyResultSchema = z.object({
 });
 
 const analysisListSchema = z
-  .array(z.string().trim().min(6).max(220))
+  .array(z.string().trim().min(6).max(280))
   .min(2)
   .max(5);
 
 export const analysisResultSchema = z.object({
-  venture_summary: z.string().trim().min(24).max(260),
+  venture_summary: z.string().trim().min(24).max(340),
   invincibility_score: z.number().int().min(0).max(100),
   verdict: z.string().trim().min(8).max(80),
-  core_break_point: z.string().trim().min(12).max(180),
+  core_break_point: z.string().trim().min(12).max(240),
   structural_weak_points: analysisListSchema,
   failure_scenarios: analysisListSchema,
   kill_conditions: analysisListSchema,

@@ -49,11 +49,36 @@ export function sanitizeClarificationQuestion(question: string) {
   return /[?.!]$/.test(cleaned) ? cleaned : `${cleaned}?`;
 }
 
+function trimToSafeBoundary(text: string) {
+  const sentenceBreak = text.search(/[.?!]["')\]]*\s+[A-Z]/);
+
+  if (sentenceBreak > 0) {
+    return text.slice(0, sentenceBreak + 1).trim();
+  }
+
+  const candidateIndex = [". ", " — ", "; ", ": ", ", "]
+    .map((token) => text.lastIndexOf(token))
+    .filter((index) => index > Math.max(40, text.length - 88))
+    .sort((left, right) => right - left)[0];
+
+  if (typeof candidateIndex === "number" && candidateIndex > 24) {
+    const tokenLength = text[candidateIndex] === "." ? 1 : 3;
+    return text.slice(0, candidateIndex + tokenLength).trim();
+  }
+
+  return text.trim();
+}
+
 function stabilizeNarrativeText(text: string) {
   let cleaned = text
     .normalize("NFKC")
     .replace(/\s+/g, " ")
     .replace(/\s+([?!.,;:])/g, "$1")
+    .replace(/([,;:])\./g, ".")
+    .replace(/\.{2,}/g, ".")
+    .replace(/[!?]{2,}/g, (match) => match[0] ?? "!")
+    .replace(/[“”]/g, '"')
+    .replace(/[‘’]/g, "'")
     .trim();
 
   if (!cleaned) {
@@ -63,6 +88,7 @@ function stabilizeNarrativeText(text: string) {
   cleaned = cleaned.replace(/\s*[\(\[\{][^\)\]\}]*$/, "").trim();
   cleaned = cleaned.replace(/\s+\b(?:and|or|to|for|with|without|because|if|when|while|than|versus|vs)\b$/i, "").trim();
   cleaned = cleaned.replace(/\s+[A-Z]$/, "").trim();
+  cleaned = cleaned.replace(/\s+(?:etc|e\.g|i\.e)\.?$/i, "").trim();
 
   if (!/[.?!]["')\]]*$/.test(cleaned) && cleaned.length > 140) {
     const cutPoints = [" — ", "; ", ": ", ", "]
@@ -75,6 +101,41 @@ function stabilizeNarrativeText(text: string) {
   }
 
   cleaned = cleaned.replace(/\s+\b(?:and|or|to|for|with|without|because|if|when|while|than|versus|vs)\b$/i, "").trim();
+  cleaned = cleaned.replace(
+    /\b(?:demonstr|reliab|repeatab|scalab|operat|differentiat|monetiz|retent|activat|distribut|competit|validat|integrat|sustainab|profitab|predictab|comparab)\.$/i,
+    "",
+  ).trim();
+
+  if (/[,:;]\s*$/.test(cleaned) || /(?:,\.|;\.|:\.)$/.test(cleaned)) {
+    cleaned = trimToSafeBoundary(cleaned.replace(/[,:;]\s*$/, "").trim());
+  }
+
+  if (cleaned.length > 100 && /\b[a-z]{4,11}\.$/.test(cleaned) && !/[.?!]["')\]]*\s+[A-Z]/.test(cleaned)) {
+    const tailWord = cleaned.match(/\b([a-z]{4,11})\.$/i)?.[1]?.toLowerCase() ?? "";
+    const suspiciousTailWords = new Set([
+      "demonstr",
+      "reliab",
+      "repeatab",
+      "scalab",
+      "operat",
+      "differentiat",
+      "monetiz",
+      "retent",
+      "activat",
+      "distribut",
+      "competit",
+      "validat",
+      "integrat",
+      "sustainab",
+      "profitab",
+      "predictab",
+      "comparab",
+    ]);
+
+    if (suspiciousTailWords.has(tailWord)) {
+      cleaned = trimToSafeBoundary(cleaned.replace(/\b[a-z]{4,11}\.$/i, "").trim());
+    }
+  }
 
   if (!cleaned) {
     return "";

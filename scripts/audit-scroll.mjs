@@ -79,7 +79,9 @@ async function moveToClarify(page) {
   await page.locator("textarea").first().fill(
     "A workflow platform for independent dental offices that automates insurance verification, benefits checks, and claim follow-up for front-desk teams.",
   );
+  await page.waitForTimeout(120);
   await page.getByRole("button", { name: /calibrate pressure test/i }).click();
+  await page.getByText(/how developed is this idea right now/i).waitFor();
   await page.getByText(/planned out but not built/i).click();
   await page.locator("textarea").last().fill("Still validating office manager demand and willingness to pay.");
   await page.getByRole("button", { name: /continue to pressure points/i }).click();
@@ -131,7 +133,8 @@ async function main() {
           "A subscription workflow tool for independent dental offices that reduces insurance verification and claim follow-up work for front-desk teams.",
         invincibility_score: 63,
         verdict: "Needs Market Proof",
-        biggest_weakness: "The buyer pain is plausible, but willingness to pay and repeatable distribution are still unproven.",
+        core_break_point:
+          "The buyer pain is plausible, but willingness to pay and repeatable distribution are still unproven.",
         structural_weak_points: [
           "The workflow pain is obvious, but the budget owner may still see this as staff labor rather than software spend.",
           "The product value collapses if offices still need too much manual exception handling.",

@@ -15,11 +15,14 @@ import {
   ShieldCheck,
   Siren,
   TriangleAlert,
+  Volume2,
+  VolumeX,
   type LucideIcon,
 } from "lucide-react";
 
 import { AnalysisCard } from "@/components/analysis-card";
 import { CursorTrail } from "@/components/cursor-trail";
+import { InfoHint } from "@/components/info-hint";
 import { StepProgress } from "@/components/step-progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +31,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn, detectAdvisoryFlags, formatBreakdownForCopy, type AdvisoryFlag } from "@/lib/utils";
 import type {
   AnalysisBreakdown,
+  AnalyzeRequestPayload,
   ClarificationPair,
   ClarifyResponse,
   IdeaStageValue,
@@ -188,7 +192,7 @@ function getApiUrl(path: string) {
 
 async function postApiJson<T extends { error?: string }>(
   path: string,
-  body: Record<string, unknown>,
+  body: object,
   fallbackMessage: string,
 ) {
   let lastError: Error | null = null;
@@ -240,10 +244,29 @@ async function postApiJson<T extends { error?: string }>(
   throw lastError ?? new Error(fallbackMessage);
 }
 
-function getScoreTone(score: number) {
+function getStageBucket(stage: IdeaStageValue | null) {
+  if (stage === "just_idea" || stage === "early_concept") {
+    return "early";
+  }
+
+  if (stage === "planned_not_built" || stage === "mvp_in_progress") {
+    return "mid";
+  }
+
+  return "late";
+}
+
+function getScoreTone(score: number, stage: IdeaStageValue | null) {
+  const stageBucket = getStageBucket(stage);
+
   if (score >= 85) {
     return {
-      helper: "Founder ready / investor ready",
+      helper:
+        stageBucket === "early"
+          ? "Unusually coherent for an early idea"
+          : stageBucket === "mid"
+            ? "Strong enough for a disciplined launch test"
+            : "Founder ready / investor ready",
       label: "Strong",
       ring: "border-[#2ecc71]/24 bg-[#2ecc71]/10 text-[#8be4b2]",
       text: "text-[#8be4b2]",
@@ -253,7 +276,12 @@ function getScoreTone(score: number) {
 
   if (score >= 70) {
     return {
-      helper: "Worth a real-world test",
+      helper:
+        stageBucket === "early"
+          ? "Clear enough to justify real user tests"
+          : stageBucket === "mid"
+            ? "Worth a disciplined live test"
+            : "Worth a real-world test",
       label: "Resilient",
       ring: "border-[#4c8dff]/24 bg-[#4c8dff]/10 text-[#9fc0ff]",
       text: "text-[#9fc0ff]",
@@ -263,7 +291,12 @@ function getScoreTone(score: number) {
 
   if (score >= 40) {
     return {
-      helper: "Needs sharper proof",
+      helper:
+        stageBucket === "early"
+          ? "Interesting, but still too unproven"
+          : stageBucket === "mid"
+            ? "Needs sharper proof before launch"
+            : "Needs sharper proof",
       label: "Questionable",
       ring: "border-[#ffa940]/24 bg-[#ffa940]/10 text-[#ffcc94]",
       text: "text-[#ffcc94]",
@@ -272,7 +305,12 @@ function getScoreTone(score: number) {
   }
 
   return {
-    helper: "Do not commit yet",
+    helper:
+      stageBucket === "early"
+        ? "Too fuzzy or exposed to trust yet"
+        : stageBucket === "mid"
+          ? "Not ready for a real launch"
+          : "Do not commit yet",
     label: "Fragile",
     ring: "border-[#ff4d4f]/24 bg-[#ff4d4f]/10 text-[#ff9a9c]",
     text: "text-[#ff9a9c]",
@@ -299,20 +337,190 @@ function formatVerdictHeadline(verdict: string) {
   return `This venture is ${lowered}`;
 }
 
-function buildDecisionGuidance(score: number) {
+function buildDecisionGuidance(score: number, stage: IdeaStageValue | null) {
+  const stageBucket = getStageBucket(stage);
+
   if (score >= 85) {
+    if (stageBucket === "early") {
+      return "This is strong for an early-stage concept, but it still deserves market proof before it deserves real capital or team build-out.";
+    }
+
     return "Even strong concepts should not absorb real capital until at least two proof conditions are met in the market.";
   }
 
   if (score >= 70) {
+    if (stageBucket === "early") {
+      return "This is clear enough to test, but do not confuse a coherent story with proof. Get two real proof conditions before committing harder.";
+    }
+
     return "Do not scale this until at least two proof conditions are met with real users, not founder intuition.";
   }
 
   if (score >= 40) {
+    if (stageBucket === "early") {
+      return "Treat this as a proof checklist, not a rejection. Tighten the wedge and test the weakest assumption before you commit serious time or money.";
+    }
+
     return "Do not commit time or capital until at least two proof conditions are met and the weakest assumption survives contact with users.";
   }
 
+  if (stageBucket === "early") {
+    return "Right now this reads more fuzzy than impossible. Sharpen the user, wedge, and test path before treating the idea like a venture.";
+  }
+
   return "Do not commit time or capital until at least two proof conditions are met and the core break point stops showing up in live tests.";
+}
+
+function buildProofSummary(stage: IdeaStageValue | null) {
+  const stageBucket = getStageBucket(stage);
+
+  if (stageBucket === "early") {
+    return "This idea needs proof that a specific user feels the pain, understands the wedge, and will change behavior enough to test it.";
+  }
+
+  if (stageBucket === "mid") {
+    return "This venture needs proof of willingness to pay, repeat use, and a channel that does not depend on founder-only hustle.";
+  }
+
+  return "This venture needs proof of customer pull, repeat usage, and a repeatable channel before real commitment.";
+}
+
+function buildPhaseAnnouncement(
+  phase: WorkflowPhase,
+  stage: IdeaStageValue | null,
+  questionIndex: number,
+  questionCount: number,
+  breakdown: AnalysisBreakdown | null,
+) {
+  if (phase === "define") {
+    return "Venture intake. Describe what you are building.";
+  }
+
+  if (phase === "calibrate") {
+    return "Stage calibration. Choose how developed the idea is.";
+  }
+
+  if (phase === "clarify-loading") {
+    return "Preparing pressure questions.";
+  }
+
+  if (phase === "clarify") {
+    const current = Math.min(questionIndex + 1, questionCount || 1);
+    const stageLabel = stage ? ` ${getIdeaStageLabel(stage)} lens.` : "";
+    return `Clarification question ${current} of ${questionCount || 1}.${stageLabel}`;
+  }
+
+  if (phase === "processing") {
+    return "Pressure test running. Preparing the evaluation memo.";
+  }
+
+  if (phase === "verdict") {
+    return breakdown ? `Verdict ready. ${breakdown.verdict}. Score ${breakdown.invincibility_score} out of 100.` : "Verdict ready.";
+  }
+
+  return "Full venture breakdown ready.";
+}
+
+type BreakpointSoundCue = "crumble" | "verdict" | "voice-on" | "voice-off";
+
+function playTone(
+  context: AudioContext,
+  destination: AudioNode,
+  {
+    duration,
+    frequency,
+    gain,
+    start,
+    type = "sine",
+  }: {
+    duration: number;
+    frequency: number;
+    gain: number;
+    start: number;
+    type?: OscillatorType;
+  },
+) {
+  const oscillator = context.createOscillator();
+  const gainNode = context.createGain();
+
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(frequency, start);
+  oscillator.frequency.exponentialRampToValueAtTime(Math.max(40, frequency * 0.62), start + duration);
+  gainNode.gain.setValueAtTime(0.0001, start);
+  gainNode.gain.exponentialRampToValueAtTime(gain, start + 0.01);
+  gainNode.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+  oscillator.connect(gainNode);
+  gainNode.connect(destination);
+  oscillator.start(start);
+  oscillator.stop(start + duration + 0.02);
+}
+
+function playNoiseBurst(
+  context: AudioContext,
+  destination: AudioNode,
+  {
+    duration,
+    start,
+    gain,
+  }: {
+    duration: number;
+    start: number;
+    gain: number;
+  },
+) {
+  const buffer = context.createBuffer(1, Math.max(1, Math.floor(context.sampleRate * duration)), context.sampleRate);
+  const channelData = buffer.getChannelData(0);
+
+  for (let index = 0; index < channelData.length; index += 1) {
+    const fade = 1 - index / channelData.length;
+    channelData[index] = (Math.random() * 2 - 1) * fade;
+  }
+
+  const source = context.createBufferSource();
+  const filter = context.createBiquadFilter();
+  const gainNode = context.createGain();
+
+  source.buffer = buffer;
+  filter.type = "highpass";
+  filter.frequency.setValueAtTime(520, start);
+  gainNode.gain.setValueAtTime(gain, start);
+  gainNode.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+  source.connect(filter);
+  filter.connect(gainNode);
+  gainNode.connect(destination);
+  source.start(start);
+  source.stop(start + duration + 0.01);
+}
+
+function triggerSoundCue(context: AudioContext, cue: BreakpointSoundCue) {
+  const output = context.createGain();
+  output.gain.value = 0.42;
+  output.connect(context.destination);
+  const now = context.currentTime + 0.01;
+
+  if (cue === "crumble") {
+    playNoiseBurst(context, output, { start: now, duration: 0.24, gain: 0.018 });
+    playTone(context, output, { start: now + 0.02, duration: 0.16, frequency: 240, gain: 0.024, type: "triangle" });
+    playTone(context, output, { start: now + 0.14, duration: 0.18, frequency: 176, gain: 0.019, type: "triangle" });
+    playTone(context, output, { start: now + 0.28, duration: 0.22, frequency: 128, gain: 0.016, type: "sine" });
+  }
+
+  if (cue === "verdict") {
+    playTone(context, output, { start: now, duration: 0.32, frequency: 164, gain: 0.026, type: "sine" });
+    playTone(context, output, { start: now + 0.08, duration: 0.28, frequency: 246, gain: 0.018, type: "triangle" });
+  }
+
+  if (cue === "voice-on") {
+    playTone(context, output, { start: now, duration: 0.12, frequency: 392, gain: 0.018, type: "triangle" });
+    playTone(context, output, { start: now + 0.06, duration: 0.12, frequency: 523, gain: 0.016, type: "triangle" });
+  }
+
+  if (cue === "voice-off") {
+    playTone(context, output, { start: now, duration: 0.14, frequency: 392, gain: 0.015, type: "triangle" });
+    playTone(context, output, { start: now + 0.04, duration: 0.16, frequency: 262, gain: 0.013, type: "triangle" });
+  }
 }
 
 function getIdeaStageLabel(stage: IdeaStageValue | null) {
@@ -625,14 +833,22 @@ export function BreakpointApp() {
   const [clarifyLoadingIndex, setClarifyLoadingIndex] = useState(0);
   const [processingMessageIndex, setProcessingMessageIndex] = useState(0);
   const [pendingFinalAnalysis, setPendingFinalAnalysis] = useState<PendingAnalysisState | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [liveAnnouncement, setLiveAnnouncement] = useState("Venture intake. Describe what you are building.");
 
   const ideaTextareaRef = useRef<HTMLTextAreaElement>(null);
   const stageNoteTextareaRef = useRef<HTMLTextAreaElement>(null);
   const clarifyTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const verdictHeadingRef = useRef<HTMLHeadingElement>(null);
+  const analysisHeadingRef = useRef<HTMLHeadingElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const pendingNextQuestionRef = useRef<number | null>(null);
   const queuedVoiceTargetRef = useRef<VoiceTarget | null>(null);
   const voiceTargetRef = useRef<VoiceTarget | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const soundEnabledRef = useRef(false);
+  const soundPreferenceHydratedRef = useRef(false);
+  const verdictCuePlayedRef = useRef(false);
 
   const isVerdictPhase = phase === "verdict" && breakdown !== null;
   const isAnalysisPhase = phase === "analysis" && breakdown !== null;
@@ -666,9 +882,33 @@ export function BreakpointApp() {
     () => detectAdvisoryFlags([idea, stageNote, ...answers, currentAnswer].filter(Boolean).join("\n")),
     [answers, currentAnswer, idea, stageNote],
   );
-  const scoreTone = breakdown ? getScoreTone(breakdown.invincibility_score) : null;
+  const scoreTone = breakdown ? getScoreTone(breakdown.invincibility_score, ideaStage) : null;
   const verdictHeadline = breakdown ? formatVerdictHeadline(breakdown.verdict) : "";
-  const decisionGuidance = breakdown ? buildDecisionGuidance(breakdown.invincibility_score) : "";
+  const decisionGuidance = breakdown ? buildDecisionGuidance(breakdown.invincibility_score, ideaStage) : "";
+  const proofSummary = buildProofSummary(ideaStage);
+
+  function playSound(cue: BreakpointSoundCue) {
+    if (!soundEnabledRef.current || typeof window === "undefined") {
+      return;
+    }
+
+    const AudioContextConstructor =
+      window.AudioContext ||
+      (window as Window & typeof globalThis & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+
+    if (!AudioContextConstructor) {
+      return;
+    }
+
+    const context = audioContextRef.current ?? new AudioContextConstructor();
+    audioContextRef.current = context;
+
+    if (context.state === "suspended") {
+      void context.resume().catch(() => undefined);
+    }
+
+    triggerSoundCue(context, cue);
+  }
 
   useEffect(() => {
     const SpeechRecognitionConstructor =
@@ -688,6 +928,7 @@ export function BreakpointApp() {
     recognition.onstart = () => {
       setIsListening(true);
       setSpeechError(null);
+      playSound("voice-on");
     };
 
     recognition.onend = () => {
@@ -710,6 +951,7 @@ export function BreakpointApp() {
 
       voiceTargetRef.current = null;
       setVoiceTarget(null);
+      playSound("voice-off");
     };
 
     recognition.onerror = (event) => {
@@ -786,6 +1028,36 @@ export function BreakpointApp() {
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const savedPreference = window.localStorage.getItem("breakpoint-sound-enabled");
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setSoundEnabled(savedPreference ? savedPreference === "true" : !reduceMotion);
+    soundPreferenceHydratedRef.current = true;
+  }, []);
+
+  useEffect(() => {
+    soundEnabledRef.current = soundEnabled;
+  }, [soundEnabled]);
+
+  useEffect(() => {
+    return () => {
+      void audioContextRef.current?.close().catch(() => undefined);
+      audioContextRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !soundPreferenceHydratedRef.current) {
+      return;
+    }
+
+    window.localStorage.setItem("breakpoint-sound-enabled", String(soundEnabled));
+  }, [soundEnabled]);
+
+  useEffect(() => {
     if (copyState !== "copied") {
       return;
     }
@@ -828,8 +1100,32 @@ export function BreakpointApp() {
 
     window.requestAnimationFrame(() => {
       window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+
+      if (phase === "verdict") {
+        verdictHeadingRef.current?.focus();
+      }
+
+      if (phase === "analysis") {
+        analysisHeadingRef.current?.focus();
+      }
     });
   }, [phase]);
+
+  useEffect(() => {
+    setLiveAnnouncement(buildPhaseAnnouncement(phase, ideaStage, currentQuestionIndex, questions.length, breakdown));
+  }, [breakdown, currentQuestionIndex, ideaStage, phase, questions.length]);
+
+  useEffect(() => {
+    if (phase === "verdict" && breakdown && !verdictCuePlayedRef.current) {
+      playSound("verdict");
+      verdictCuePlayedRef.current = true;
+      return;
+    }
+
+    if (phase !== "verdict") {
+      verdictCuePlayedRef.current = false;
+    }
+  }, [breakdown, phase]);
 
   useEffect(() => {
     function handleKeydown(event: KeyboardEvent) {
@@ -874,7 +1170,7 @@ export function BreakpointApp() {
 
       void (async () => {
         try {
-          const payload = await fetchAnalysisBreakdown(idea, finalAnswers.answers);
+          const payload = await fetchAnalysisBreakdown(idea, ideaStage, stageNote, finalAnswers.answers);
           setBreakdown(payload);
           setPhase("verdict");
         } catch (requestError) {
@@ -891,7 +1187,7 @@ export function BreakpointApp() {
     }, 360);
 
     return () => window.clearTimeout(timeout);
-  }, [idea, pendingFinalAnalysis, phase, questions.length]);
+  }, [idea, ideaStage, pendingFinalAnalysis, phase, questions.length, stageNote]);
 
   function moveToCalibration() {
     const nextIdea = idea.trim();
@@ -978,7 +1274,12 @@ export function BreakpointApp() {
     }
   }
 
-  async function fetchAnalysisBreakdown(sourceIdea: string, sourceAnswers: ClarificationPair[]) {
+  async function fetchAnalysisBreakdown(
+    sourceIdea: string,
+    stage: IdeaStageValue | null,
+    note: string,
+    sourceAnswers: ClarificationPair[],
+  ) {
     const nextIdea = sourceIdea.trim();
     const normalizedAnswers = sourceAnswers.map((entry) => ({
       question: entry.question,
@@ -989,12 +1290,20 @@ export function BreakpointApp() {
       throw new Error("Answer each clarification before applying pressure.");
     }
 
+    if (!stage) {
+      throw new Error("Choose how developed the idea is before running the full pressure test.");
+    }
+
+    const requestBody: AnalyzeRequestPayload = {
+      idea: nextIdea,
+      stage,
+      stage_note: note.trim(),
+      answers: normalizedAnswers,
+    };
+
     const payload = await postApiJson<AnalysisBreakdown & { error?: string }>(
       "/api/analyze",
-      {
-        idea: nextIdea,
-        answers: normalizedAnswers,
-      },
+      requestBody,
       "The system could not complete the breakdown.",
     );
 
@@ -1027,6 +1336,7 @@ export function BreakpointApp() {
     }
 
     setError(null);
+    playSound("crumble");
 
     const nextAnswers = answers.map((answer, index) => (index === currentQuestionIndex ? trimmedAnswer : answer));
     setAnswers(nextAnswers);
@@ -1192,6 +1502,9 @@ export function BreakpointApp() {
         <div className="absolute inset-x-0 top-0 h-64 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),transparent)] opacity-70" />
       </div>
       <CursorTrail />
+      <div className="sr-only" aria-atomic="true" aria-live="polite" role="status">
+        {liveAnnouncement}
+      </div>
 
       <div
         className={cn(
@@ -1217,6 +1530,18 @@ export function BreakpointApp() {
                 Pressure test the venture before the market does.
               </p>
             </div>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => setSoundEnabled((current) => !current)}
+              className="self-start whitespace-normal sm:ml-auto sm:self-auto"
+              aria-pressed={soundEnabled}
+              title="Toggle subtle sound cues for question crumble, voice capture, and verdict reveal"
+            >
+              {soundEnabled ? "Sound On" : "Sound Off"}
+              {soundEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+            </Button>
           </div>
         </header>
 
@@ -1370,6 +1695,13 @@ export function BreakpointApp() {
                     <CardDescription className="bp-stage-desc max-w-2xl text-balance text-[15px]">
                       This helps BreakPoint match the pressure test to your stage instead of assuming the venture is fully built.
                     </CardDescription>
+                    <div className="mt-1 flex items-center justify-center gap-2 text-xs text-foreground/54">
+                      <span>Stage lens</span>
+                      <InfoHint
+                        label="Explain how stage calibration works"
+                        content="Early ideas get pressure-tested on user clarity, wedge, and testability. More mature ventures get judged harder on proof, retention, monetization, and distribution."
+                      />
+                    </div>
                   </CardHeader>
                   <CardContent className="bp-stage-content flex flex-col items-center gap-5">
                     <div className="w-full max-w-[940px] rounded-[24px] border border-white/10 bg-[#0b0f15]/88 px-4 py-4 text-sm leading-6 text-foreground/80">
@@ -1415,8 +1747,13 @@ export function BreakpointApp() {
 
                     <div className="w-full max-w-[940px] rounded-[26px] border border-white/10 bg-[#0b0f15]/92 p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div className="min-w-0 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-                          Anything else the system should know before applying pressure?
+                        <div className="flex min-w-0 items-center gap-2 font-mono text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+                          <span>Anything else the system should know before applying pressure?</span>
+                          <InfoHint
+                            align="left"
+                            label="Explain optional stage context"
+                            content="Use this for constraints, current traction, audience details, or what still feels fuzzy. It helps the system ask better questions without changing the venture itself."
+                          />
                         </div>
                         {renderVoiceButton("stage_note")}
                       </div>
@@ -1664,7 +2001,11 @@ export function BreakpointApp() {
                     <Badge variant="pressure" className="w-fit">
                       Verdict
                     </Badge>
-                    <CardTitle className="text-balance text-[1.85rem] leading-[0.98] tracking-[-0.06em] sm:text-[2.3rem] lg:text-[2.55rem]">
+                    <CardTitle
+                      ref={verdictHeadingRef}
+                      tabIndex={-1}
+                      className="text-balance text-[1.85rem] leading-[0.98] tracking-[-0.06em] sm:text-[2.3rem] lg:text-[2.55rem] focus:outline-none"
+                    >
                       {verdictHeadline}
                     </CardTitle>
                     <CardDescription className="max-w-2xl text-[15px]">
@@ -1674,8 +2015,12 @@ export function BreakpointApp() {
                   <CardContent className="flex flex-col items-center gap-5">
                     {scoreTone ? (
                       <div className="w-full max-w-[820px] rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.02))] p-6 text-center shadow-[0_28px_80px_rgba(0,0,0,0.24)]">
-                        <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
-                          Invincibility Score
+                        <div className="flex items-center justify-center gap-2 font-mono text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+                          <span>Invincibility Score</span>
+                          <InfoHint
+                            label="Explain the invincibility score"
+                            content="Higher is better. The score reflects how believable and resilient the venture looks for its current stage, not whether it already behaves like a late-stage company."
+                          />
                         </div>
                         <div className="mt-4 flex flex-wrap items-end justify-center gap-2">
                           <span className={cn("text-[4.1rem] font-semibold leading-none tracking-[-0.12em] sm:text-[5.25rem] lg:text-[5.75rem]", scoreTone.text)}>
@@ -1703,14 +2048,19 @@ export function BreakpointApp() {
                           />
                         </div>
                         <p className="mx-auto mt-4 max-w-[540px] text-sm leading-7 text-foreground/78">
-                          {scoreTone.helper}. Higher is better, and this is the fastest read on whether the venture deserves more commitment.
+                          {scoreTone.helper}. Higher is better, and this is the fastest read on whether the venture deserves more commitment at this stage.
                         </p>
                       </div>
                     ) : null}
 
                     <div className="w-full max-w-[820px] rounded-[28px] border border-[#ff4d4f]/18 bg-[#ff4d4f]/[0.08] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.16)]">
-                      <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-[#ff9a9c]">
-                        Core Break Point
+                      <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.24em] text-[#ff9a9c]">
+                        <span>Core Break Point</span>
+                        <InfoHint
+                          align="left"
+                          label="Explain the core break point"
+                          content="This is the single weakness most likely to collapse the venture if it stays unresolved. It is the one thing to test or fix first."
+                        />
                       </div>
                       <p className="mt-3 break-words text-[0.98rem] leading-7 text-foreground/88">
                         {breakdown.core_break_point}
@@ -1773,12 +2123,21 @@ export function BreakpointApp() {
                                 Outcome before commitment
                               </div>
                             </div>
-                            <CardTitle className="mt-5 max-w-4xl text-balance text-[2.15rem] leading-[0.95] tracking-[-0.065em] text-foreground sm:text-[2.75rem] lg:text-[3.35rem]">
+                            <CardTitle
+                              ref={analysisHeadingRef}
+                              tabIndex={-1}
+                              className="mt-5 max-w-4xl text-balance text-[2.15rem] leading-[0.95] tracking-[-0.065em] text-foreground focus:outline-none sm:text-[2.75rem] lg:text-[3.35rem]"
+                            >
                               {verdictHeadline}
                             </CardTitle>
                             <div className="mt-6 max-w-4xl space-y-2">
-                              <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-[#ff9a9c]">
-                                Core Break Point
+                              <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.24em] text-[#ff9a9c]">
+                                <span>Core Break Point</span>
+                                <InfoHint
+                                  align="left"
+                                  label="Explain the core break point"
+                                  content="This is the single weakness most likely to break the venture first. If you only resolve one thing before moving forward, resolve this."
+                                />
                               </div>
                               <p className="break-words text-[1.04rem] leading-8 text-foreground/88">
                                 {breakdown.core_break_point}
@@ -1791,8 +2150,13 @@ export function BreakpointApp() {
 
                           {scoreTone ? (
                             <div className="min-w-0 rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))] p-5 shadow-[0_24px_60px_rgba(0,0,0,0.2)]">
-                              <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
-                                Invincibility Score
+                              <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.24em] text-muted-foreground">
+                                <span>Invincibility Score</span>
+                                <InfoHint
+                                  align="left"
+                                  label="Explain the invincibility score"
+                                  content="Higher is better. The score reflects how resilient the venture looks for its stage and current proof, not whether it has already become a mature company."
+                                />
                               </div>
                               <div className="mt-4 flex items-end gap-2">
                                 <span className={cn("text-[4.7rem] font-semibold leading-none tracking-[-0.11em]", scoreTone.text)}>
@@ -1820,7 +2184,7 @@ export function BreakpointApp() {
                                 />
                               </div>
                               <p className="mt-4 text-sm leading-7 text-foreground/78">
-                                {scoreTone.helper}. Higher is better, and the label tells you how much conviction this currently deserves.
+                                {scoreTone.helper}. Higher is better, and the label tells you how much conviction this currently deserves at this stage.
                               </p>
                             </div>
                           ) : null}
@@ -1838,11 +2202,16 @@ export function BreakpointApp() {
                         </div>
 
                         <div className="min-w-0 rounded-[28px] border border-[#ffa940]/18 bg-[#ffa940]/[0.07] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.16)]">
-                          <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#ffcc94]">
-                            Proof required before launch
+                          <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.22em] text-[#ffcc94]">
+                            <span>Proof required before launch</span>
+                            <InfoHint
+                              align="left"
+                              label="Explain proof required before launch"
+                              content="This is the minimum evidence the venture needs before it deserves deeper commitment. It should answer what would make the idea more believable, not just what sounds impressive."
+                            />
                           </div>
                           <p className="mt-3 text-sm leading-7 text-foreground/84">
-                            This venture needs proof of customer pull, repeat usage, and a repeatable channel before real commitment.
+                            {proofSummary}
                           </p>
                           <ul className="mt-4 space-y-2.5 text-sm leading-7 text-foreground/88">
                             {breakdown.proof_required_before_launch.slice(0, 3).map((item, index) => (
@@ -1869,7 +2238,9 @@ export function BreakpointApp() {
                               items={breakdown[section.key]}
                               icon={section.icon}
                               tone={section.tone}
-                              summary={section.summary}
+                              summary={
+                                section.key === "proof_required_before_launch" ? proofSummary : section.summary
+                              }
                             />
                           </div>
                         ))}
