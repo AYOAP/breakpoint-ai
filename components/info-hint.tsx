@@ -44,12 +44,7 @@ export function InfoHint({ align = "right", className, content, label }: InfoHin
   }, [open]);
 
   return (
-    <span
-      ref={rootRef}
-      className={cn("relative inline-flex shrink-0", className)}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-    >
+    <span ref={rootRef} className={cn("relative inline-flex shrink-0", className)}>
       <button
         type="button"
         aria-expanded={open}
