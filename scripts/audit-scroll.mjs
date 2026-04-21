@@ -105,12 +105,13 @@ async function answerClarifications(page) {
 }
 
 async function dismissOnboardingIfPresent(page) {
-  const onboardingHeading = page.getByText(/how breakpoint works/i);
+  const onboardingDialog = page.locator('[role="dialog"]');
 
-  if (await onboardingHeading.count()) {
-    await onboardingHeading.waitFor();
+  if (await onboardingDialog.count()) {
+    await onboardingDialog.waitFor();
     await page.getByRole("button", { name: /skip intro/i }).click();
-    await page.getByText(/what are you thinking of building/i).waitFor();
+    await onboardingDialog.waitFor({ state: "hidden" });
+    await page.getByRole("heading", { name: /what are you thinking of building/i }).waitFor();
   }
 }
 

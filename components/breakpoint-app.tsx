@@ -891,7 +891,7 @@ function OnboardingOverlay({
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onClick={onClose}
-      className="fixed inset-0 z-[70] flex items-center justify-center bg-[rgba(5,7,10,0.74)] px-4 py-5 backdrop-blur-md"
+      className="fixed inset-0 z-[70] overflow-y-auto bg-[rgba(5,7,10,0.74)] px-3 py-3 backdrop-blur-md sm:px-4 sm:py-5"
     >
       <motion.div
         initial={{ opacity: 0, y: 24, scale: 0.98 }}
@@ -903,13 +903,14 @@ function OnboardingOverlay({
         aria-labelledby="breakpoint-onboarding-title"
         aria-describedby="breakpoint-onboarding-body"
         transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-        className="relative w-full max-w-[980px] overflow-hidden rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(20,24,32,0.97),rgba(8,10,14,0.99))] shadow-[0_36px_120px_rgba(0,0,0,0.44)]"
+        className="relative mx-auto my-auto w-full max-w-[980px] overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(20,24,32,0.97),rgba(8,10,14,0.99))] shadow-[0_36px_120px_rgba(0,0,0,0.44)] sm:rounded-[32px]"
+        style={{ maxHeight: "calc(100dvh - 1.5rem)" }}
       >
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,77,79,0.15),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(76,141,255,0.16),transparent_36%)]" />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.18),transparent)]" />
 
-        <div className="relative grid gap-0 lg:grid-cols-[minmax(0,1.05fr)_380px]">
-          <div className="p-6 sm:p-7 lg:p-8">
+        <div className="relative grid max-h-[inherit] gap-0 overflow-y-auto lg:grid-cols-[minmax(0,1.02fr)_360px]">
+          <div className="p-5 sm:p-7 lg:p-8">
             <div className="flex flex-wrap items-center gap-3">
               <Badge variant="pressure" className="w-fit">
                 How BreakPoint Works
@@ -924,23 +925,26 @@ function OnboardingOverlay({
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.24, ease: "easeOut" }}
-              className="mt-6"
+              className="mt-5 sm:mt-6"
             >
-              <div className="flex h-14 w-14 items-center justify-center rounded-[18px] border border-white/10 bg-white/[0.05] text-[#ffb08f] shadow-[0_0_40px_rgba(255,96,82,0.12)]">
-                <Icon className="h-6 w-6" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-[16px] border border-white/10 bg-white/[0.05] text-[#ffb08f] shadow-[0_0_40px_rgba(255,96,82,0.12)] sm:h-14 sm:w-14 sm:rounded-[18px]">
+                <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
               <h2
                 id="breakpoint-onboarding-title"
-                className="mt-6 max-w-[16ch] text-balance text-[1.95rem] font-semibold leading-[0.96] tracking-[-0.05em] text-foreground sm:text-[2.4rem]"
+                className="mt-5 max-w-[16ch] text-balance text-[1.68rem] font-semibold leading-[0.98] tracking-[-0.05em] text-foreground sm:mt-6 sm:text-[2.4rem]"
               >
                 {step.title}
               </h2>
-              <p id="breakpoint-onboarding-body" className="mt-4 max-w-[34rem] text-[15px] leading-8 text-foreground/80">
+              <p
+                id="breakpoint-onboarding-body"
+                className="mt-3 max-w-[34rem] text-[14px] leading-7 text-foreground/80 sm:mt-4 sm:text-[15px] sm:leading-8"
+              >
                 {step.body}
               </p>
             </motion.div>
 
-            <div className="mt-8 flex flex-wrap items-center gap-2.5">
+            <div className="mt-6 flex flex-wrap items-center gap-2.5 sm:mt-8">
               {onboardingSteps.map((entry, index) => (
                 <div
                   key={entry.title}
@@ -952,7 +956,7 @@ function OnboardingOverlay({
               ))}
             </div>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mt-6 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:items-center sm:justify-between">
               <Button variant="secondary" onClick={onClose} className="w-full whitespace-normal sm:w-auto">
                 Skip intro
               </Button>
@@ -963,11 +967,11 @@ function OnboardingOverlay({
             </div>
           </div>
 
-          <div className="relative border-t border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] p-6 sm:p-7 lg:border-l lg:border-t-0 lg:p-8">
+          <div className="relative border-t border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] p-5 sm:p-7 lg:border-l lg:border-t-0 lg:p-8">
             <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-foreground/48">
               Pressure path
             </div>
-            <div className="mt-5 space-y-3">
+            <div className="mt-4 space-y-2.5 sm:mt-5 sm:space-y-3">
               {[
                 "Enter the idea or plan",
                 "Calibrate the venture stage",
@@ -980,7 +984,7 @@ function OnboardingOverlay({
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ duration: 0.22, delay: index * 0.05 }}
                   className={cn(
-                    "rounded-[20px] border px-4 py-3",
+                    "rounded-[18px] border px-3.5 py-3 sm:rounded-[20px] sm:px-4",
                     index <= stepIndex
                       ? "border-white/12 bg-white/[0.06] text-foreground"
                       : "border-white/8 bg-white/[0.025] text-foreground/56",
@@ -989,7 +993,7 @@ function OnboardingOverlay({
                   <div className="flex items-center gap-3">
                     <div
                       className={cn(
-                        "inline-flex h-8 min-w-[2rem] items-center justify-center rounded-full font-mono text-[10px] uppercase tracking-[0.16em]",
+                        "inline-flex h-7 min-w-[1.8rem] items-center justify-center rounded-full font-mono text-[10px] uppercase tracking-[0.16em] sm:h-8 sm:min-w-[2rem]",
                         index <= stepIndex ? "bg-[#ff8c4a] text-black" : "bg-white/[0.06] text-foreground/60",
                       )}
                     >
@@ -1001,11 +1005,11 @@ function OnboardingOverlay({
               ))}
             </div>
 
-            <div className="mt-6 rounded-[24px] border border-[#4c8dff]/14 bg-[#4c8dff]/[0.08] p-4">
+            <div className="mt-5 rounded-[22px] border border-[#4c8dff]/14 bg-[#4c8dff]/[0.08] p-3.5 sm:mt-6 sm:rounded-[24px] sm:p-4">
               <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#9fc0ff]">
                 What you get
               </div>
-              <p className="mt-3 text-sm leading-7 text-foreground/82">
+              <p className="mt-2.5 text-sm leading-6 text-foreground/82 sm:mt-3 sm:leading-7">
                 BreakPoint gives you an Invincibility Score, the core break point, proof required before launch, and the full memo behind the verdict.
               </p>
             </div>
