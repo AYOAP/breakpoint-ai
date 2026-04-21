@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Activity,
@@ -135,6 +135,13 @@ type PendingAnalysisState = {
 
 type VoiceTarget = "idea" | "stage_note" | "clarify";
 
+type OnboardingStep = {
+  body: string;
+  eyebrow: string;
+  icon: LucideIcon;
+  title: string;
+};
+
 const analysisSections: Array<{
   key: BreakdownListKey;
   title: string;
@@ -154,6 +161,30 @@ const analysisSections: Array<{
   },
   { key: "hidden_assumptions", title: "Hidden Assumptions", icon: Crosshair, tone: "pressure" },
   { key: "strengthening_moves", title: "Strengthening Moves", icon: ShieldCheck, tone: "success" },
+];
+
+const onboardingSteps: OnboardingStep[] = [
+  {
+    eyebrow: "Step 1",
+    icon: Crosshair,
+    title: "Enter the venture, not the pitch",
+    body:
+      "Drop in the business idea, startup plan, operating bet, or investment thesis. The clearer the buyer, offer, and edge, the sharper the pressure test gets.",
+  },
+  {
+    eyebrow: "Step 2",
+    icon: Activity,
+    title: "Answer the pressure questions",
+    body:
+      "BreakPoint asks a few targeted questions one at a time. Those answers sharpen the weak assumptions instead of forcing the system to guess what you meant.",
+  },
+  {
+    eyebrow: "Step 3",
+    icon: ShieldCheck,
+    title: "Read the verdict, then the memo",
+    body:
+      "You get an Invincibility Score, the core break point, and the full breakdown so you can see what deserves more commitment and what still needs proof.",
+  },
 ];
 
 const stageTransition = { duration: 0.28, ease: "easeOut" } as const;
@@ -421,7 +452,15 @@ function buildPhaseAnnouncement(
   return "Full venture breakdown ready.";
 }
 
-type BreakpointSoundCue = "crumble" | "verdict" | "voice-on" | "voice-off";
+type BreakpointSoundCue =
+  | "tap"
+  | "select"
+  | "commit"
+  | "crumble"
+  | "copy"
+  | "verdict"
+  | "voice-on"
+  | "voice-off";
 
 function playTone(
   context: AudioContext,
@@ -500,11 +539,31 @@ function triggerSoundCue(context: AudioContext, cue: BreakpointSoundCue) {
   output.connect(context.destination);
   const now = context.currentTime + 0.01;
 
+  if (cue === "tap") {
+    playTone(context, output, { start: now, duration: 0.1, frequency: 520, gain: 0.015, type: "triangle" });
+    playTone(context, output, { start: now + 0.035, duration: 0.08, frequency: 392, gain: 0.011, type: "triangle" });
+  }
+
+  if (cue === "select") {
+    playTone(context, output, { start: now, duration: 0.08, frequency: 466, gain: 0.012, type: "triangle" });
+    playTone(context, output, { start: now + 0.03, duration: 0.09, frequency: 622, gain: 0.01, type: "triangle" });
+  }
+
+  if (cue === "commit") {
+    playTone(context, output, { start: now, duration: 0.12, frequency: 310, gain: 0.02, type: "triangle" });
+    playTone(context, output, { start: now + 0.04, duration: 0.16, frequency: 196, gain: 0.015, type: "sine" });
+  }
+
   if (cue === "crumble") {
     playNoiseBurst(context, output, { start: now, duration: 0.24, gain: 0.018 });
     playTone(context, output, { start: now + 0.02, duration: 0.16, frequency: 240, gain: 0.024, type: "triangle" });
     playTone(context, output, { start: now + 0.14, duration: 0.18, frequency: 176, gain: 0.019, type: "triangle" });
     playTone(context, output, { start: now + 0.28, duration: 0.22, frequency: 128, gain: 0.016, type: "sine" });
+  }
+
+  if (cue === "copy") {
+    playTone(context, output, { start: now, duration: 0.11, frequency: 659, gain: 0.015, type: "triangle" });
+    playTone(context, output, { start: now + 0.04, duration: 0.12, frequency: 880, gain: 0.012, type: "triangle" });
   }
 
   if (cue === "verdict") {
@@ -810,6 +869,153 @@ function FinalFractureOverlay() {
   );
 }
 
+function OnboardingOverlay({
+  onClose,
+  onNext,
+  step,
+  stepIndex,
+  totalSteps,
+}: {
+  onClose: () => void;
+  onNext: () => void;
+  step: OnboardingStep;
+  stepIndex: number;
+  totalSteps: number;
+}) {
+  const Icon = step.icon;
+  const isLastStep = stepIndex === totalSteps - 1;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onClose}
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-[rgba(5,7,10,0.74)] px-4 py-5 backdrop-blur-md"
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 24, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 18, scale: 0.98 }}
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="breakpoint-onboarding-title"
+        aria-describedby="breakpoint-onboarding-body"
+        transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+        className="relative w-full max-w-[980px] overflow-hidden rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(20,24,32,0.97),rgba(8,10,14,0.99))] shadow-[0_36px_120px_rgba(0,0,0,0.44)]"
+      >
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,77,79,0.15),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(76,141,255,0.16),transparent_36%)]" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.18),transparent)]" />
+
+        <div className="relative grid gap-0 lg:grid-cols-[minmax(0,1.05fr)_380px]">
+          <div className="p-6 sm:p-7 lg:p-8">
+            <div className="flex flex-wrap items-center gap-3">
+              <Badge variant="pressure" className="w-fit">
+                How BreakPoint Works
+              </Badge>
+              <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.22em] text-foreground/56">
+                {step.eyebrow}
+              </div>
+            </div>
+
+            <motion.div
+              key={stepIndex}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.24, ease: "easeOut" }}
+              className="mt-6"
+            >
+              <div className="flex h-14 w-14 items-center justify-center rounded-[18px] border border-white/10 bg-white/[0.05] text-[#ffb08f] shadow-[0_0_40px_rgba(255,96,82,0.12)]">
+                <Icon className="h-6 w-6" />
+              </div>
+              <h2
+                id="breakpoint-onboarding-title"
+                className="mt-6 max-w-[16ch] text-balance text-[1.95rem] font-semibold leading-[0.96] tracking-[-0.05em] text-foreground sm:text-[2.4rem]"
+              >
+                {step.title}
+              </h2>
+              <p id="breakpoint-onboarding-body" className="mt-4 max-w-[34rem] text-[15px] leading-8 text-foreground/80">
+                {step.body}
+              </p>
+            </motion.div>
+
+            <div className="mt-8 flex flex-wrap items-center gap-2.5">
+              {onboardingSteps.map((entry, index) => (
+                <div
+                  key={entry.title}
+                  className={cn(
+                    "h-2.5 rounded-full transition-all duration-300",
+                    index === stepIndex ? "w-9 bg-[#ff8c4a]" : "w-2.5 bg-white/16",
+                  )}
+                />
+              ))}
+            </div>
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <Button variant="secondary" onClick={onClose} className="w-full whitespace-normal sm:w-auto">
+                Skip intro
+              </Button>
+              <Button size="lg" onClick={onNext} className="w-full whitespace-normal sm:w-auto">
+                {isLastStep ? "Start pressure test" : "Next step"}
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="relative border-t border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))] p-6 sm:p-7 lg:border-l lg:border-t-0 lg:p-8">
+            <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-foreground/48">
+              Pressure path
+            </div>
+            <div className="mt-5 space-y-3">
+              {[
+                "Enter the idea or plan",
+                "Calibrate the venture stage",
+                "Answer the pressure questions",
+                "Get the score and memo",
+              ].map((label, index) => (
+                <motion.div
+                  key={label}
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.22, delay: index * 0.05 }}
+                  className={cn(
+                    "rounded-[20px] border px-4 py-3",
+                    index <= stepIndex
+                      ? "border-white/12 bg-white/[0.06] text-foreground"
+                      : "border-white/8 bg-white/[0.025] text-foreground/56",
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={cn(
+                        "inline-flex h-8 min-w-[2rem] items-center justify-center rounded-full font-mono text-[10px] uppercase tracking-[0.16em]",
+                        index <= stepIndex ? "bg-[#ff8c4a] text-black" : "bg-white/[0.06] text-foreground/60",
+                      )}
+                    >
+                      {index + 1}
+                    </div>
+                    <div className="text-sm leading-6">{label}</div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+
+            <div className="mt-6 rounded-[24px] border border-[#4c8dff]/14 bg-[#4c8dff]/[0.08] p-4">
+              <div className="font-mono text-[11px] uppercase tracking-[0.22em] text-[#9fc0ff]">
+                What you get
+              </div>
+              <p className="mt-3 text-sm leading-7 text-foreground/82">
+                BreakPoint gives you an Invincibility Score, the core break point, proof required before launch, and the full memo behind the verdict.
+              </p>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 export function BreakpointApp() {
   const [phase, setPhase] = useState<WorkflowPhase>("define");
   const [idea, setIdea] = useState("");
@@ -834,6 +1040,8 @@ export function BreakpointApp() {
   const [processingMessageIndex, setProcessingMessageIndex] = useState(0);
   const [pendingFinalAnalysis, setPendingFinalAnalysis] = useState<PendingAnalysisState | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingStepIndex, setOnboardingStepIndex] = useState(0);
   const [liveAnnouncement, setLiveAnnouncement] = useState("Venture intake. Describe what you are building.");
 
   const ideaTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -849,6 +1057,7 @@ export function BreakpointApp() {
   const soundEnabledRef = useRef(false);
   const soundPreferenceHydratedRef = useRef(false);
   const verdictCuePlayedRef = useRef(false);
+  const onboardingHydratedRef = useRef(false);
 
   const isVerdictPhase = phase === "verdict" && breakdown !== null;
   const isAnalysisPhase = phase === "analysis" && breakdown !== null;
@@ -886,6 +1095,7 @@ export function BreakpointApp() {
   const verdictHeadline = breakdown ? formatVerdictHeadline(breakdown.verdict) : "";
   const decisionGuidance = breakdown ? buildDecisionGuidance(breakdown.invincibility_score, ideaStage) : "";
   const proofSummary = buildProofSummary(ideaStage);
+  const activeOnboardingStep = onboardingSteps[onboardingStepIndex] ?? onboardingSteps[0];
 
   function playSound(cue: BreakpointSoundCue) {
     if (!soundEnabledRef.current || typeof window === "undefined") {
@@ -1039,6 +1249,19 @@ export function BreakpointApp() {
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined" || onboardingHydratedRef.current) {
+      return;
+    }
+
+    onboardingHydratedRef.current = true;
+
+    if (window.localStorage.getItem("breakpoint-onboarding-seen") !== "true") {
+      setShowOnboarding(true);
+      setOnboardingStepIndex(0);
+    }
+  }, []);
+
+  useEffect(() => {
     soundEnabledRef.current = soundEnabled;
   }, [soundEnabled]);
 
@@ -1127,8 +1350,41 @@ export function BreakpointApp() {
     }
   }, [breakdown, phase]);
 
+  const dismissOnboarding = useCallback(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("breakpoint-onboarding-seen", "true");
+    }
+
+    playSound("tap");
+    setShowOnboarding(false);
+    setOnboardingStepIndex(0);
+
+    window.setTimeout(() => {
+      ideaTextareaRef.current?.focus();
+    }, 80);
+  }, []);
+
+  const advanceOnboarding = useCallback(() => {
+    if (onboardingStepIndex >= onboardingSteps.length - 1) {
+      dismissOnboarding();
+      return;
+    }
+
+    playSound("tap");
+    setOnboardingStepIndex((current) => Math.min(current + 1, onboardingSteps.length - 1));
+  }, [dismissOnboarding, onboardingStepIndex]);
+
   useEffect(() => {
     function handleKeydown(event: KeyboardEvent) {
+      if (showOnboarding) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          dismissOnboarding();
+        }
+
+        return;
+      }
+
       if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
         event.preventDefault();
 
@@ -1156,7 +1412,7 @@ export function BreakpointApp() {
 
     window.addEventListener("keydown", handleKeydown);
     return () => window.removeEventListener("keydown", handleKeydown);
-  }, [idea, ideaStage, pendingAction, phase, stageNote]);
+  }, [dismissOnboarding, idea, ideaStage, pendingAction, phase, showOnboarding, stageNote]);
 
   useEffect(() => {
     if (phase !== "processing" || !pendingFinalAnalysis) {
@@ -1197,6 +1453,7 @@ export function BreakpointApp() {
       return;
     }
 
+    playSound("tap");
     recognitionRef.current?.stop();
     setIdea(nextIdea);
     setError(null);
@@ -1224,6 +1481,7 @@ export function BreakpointApp() {
 
     const startedAt = Date.now();
 
+    playSound("tap");
     recognitionRef.current?.stop();
     setPendingAction("clarify");
     setError(null);
@@ -1318,6 +1576,7 @@ export function BreakpointApp() {
     try {
       await navigator.clipboard.writeText(formatBreakdownForCopy(idea, clarificationPairs, breakdown));
       setCopyState("copied");
+      playSound("copy");
     } catch {
       setCopyState("failed");
     }
@@ -1336,6 +1595,7 @@ export function BreakpointApp() {
     }
 
     setError(null);
+    playSound("commit");
     playSound("crumble");
 
     const nextAnswers = answers.map((answer, index) => (index === currentQuestionIndex ? trimmedAnswer : answer));
@@ -1396,6 +1656,7 @@ export function BreakpointApp() {
   }
 
   function resetWorkflow() {
+    playSound("tap");
     recognitionRef.current?.abort();
     pendingNextQuestionRef.current = null;
     setPhase("define");
@@ -1505,6 +1766,17 @@ export function BreakpointApp() {
       <div className="sr-only" aria-atomic="true" aria-live="polite" role="status">
         {liveAnnouncement}
       </div>
+      <AnimatePresence>
+        {showOnboarding ? (
+          <OnboardingOverlay
+            onClose={dismissOnboarding}
+            onNext={advanceOnboarding}
+            step={activeOnboardingStep}
+            stepIndex={onboardingStepIndex}
+            totalSteps={onboardingSteps.length}
+          />
+        ) : null}
+      </AnimatePresence>
 
       <div
         className={cn(
@@ -1534,7 +1806,17 @@ export function BreakpointApp() {
               type="button"
               size="sm"
               variant="secondary"
-              onClick={() => setSoundEnabled((current) => !current)}
+              onClick={() =>
+                setSoundEnabled((current) => {
+                  const next = !current;
+
+                  if (!current && next) {
+                    window.setTimeout(() => playSound("tap"), 0);
+                  }
+
+                  return next;
+                })
+              }
               className="self-start whitespace-normal sm:ml-auto sm:self-auto"
               aria-pressed={soundEnabled}
               title="Toggle subtle sound cues for question crumble, voice capture, and verdict reveal"
@@ -1656,14 +1938,15 @@ export function BreakpointApp() {
 
                     <div className="flex w-full max-w-[820px] flex-wrap items-center justify-center gap-2.5 pt-1">
                       {sampleIdeas.map((sample) => (
-                        <button
-                          key={sample.label}
-                          type="button"
-                          onClick={() => {
-                            setIdea(sample.idea);
-                            setError(null);
-                            window.setTimeout(() => {
-                              ideaTextareaRef.current?.focus();
+                          <button
+                            key={sample.label}
+                            type="button"
+                            onClick={() => {
+                              playSound("select");
+                              setIdea(sample.idea);
+                              setError(null);
+                              window.setTimeout(() => {
+                                ideaTextareaRef.current?.focus();
                             }, 40);
                           }}
                           className="rounded-full border border-white/10 bg-white/[0.025] px-3 py-1.5 text-sm text-foreground/62 transition-all duration-200 hover:-translate-y-0.5 hover:border-white/18 hover:bg-white/[0.05] hover:text-foreground/78"
@@ -1720,6 +2003,7 @@ export function BreakpointApp() {
                             key={stage.value}
                             type="button"
                             onClick={() => {
+                              playSound("select");
                               setIdeaStage(stage.value);
                               setError(null);
                             }}
@@ -2068,7 +2352,14 @@ export function BreakpointApp() {
                     </div>
 
                     <div className="flex w-full max-w-[820px] flex-col gap-3 sm:flex-row sm:items-center sm:justify-center">
-                      <Button size="lg" onClick={() => setPhase("analysis")} className="w-full whitespace-normal sm:w-auto">
+                      <Button
+                        size="lg"
+                        onClick={() => {
+                          playSound("tap");
+                          setPhase("analysis");
+                        }}
+                        className="w-full whitespace-normal sm:w-auto"
+                      >
                         Show me the breakdown
                         <ArrowRight className="h-4 w-4" />
                       </Button>

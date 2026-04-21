@@ -104,6 +104,16 @@ async function answerClarifications(page) {
   }
 }
 
+async function dismissOnboardingIfPresent(page) {
+  const onboardingHeading = page.getByText(/how breakpoint works/i);
+
+  if (await onboardingHeading.count()) {
+    await onboardingHeading.waitFor();
+    await page.getByRole("button", { name: /skip intro/i }).click();
+    await page.getByText(/what are you thinking of building/i).waitFor();
+  }
+}
+
 async function main() {
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
@@ -164,6 +174,7 @@ async function main() {
   });
 
   await page.goto(baseUrl, { waitUntil: "networkidle" });
+  await dismissOnboardingIfPresent(page);
 
   const defineState = await collectScrollableNodes(page, "define");
   assertSingleScrollOwner(defineState);

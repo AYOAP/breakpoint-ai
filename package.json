@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "audit:scroll": "node scripts/audit-scroll.mjs"
+    "audit:scroll": "node scripts/audit-scroll.mjs",
+    "audit:onboarding": "node scripts/audit-onboarding.mjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-mono": "^5.2.7",
