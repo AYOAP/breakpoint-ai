@@ -452,6 +452,59 @@ function buildPhaseAnnouncement(
   return "Full venture breakdown ready.";
 }
 
+function getVoiceTargetLabel(target: VoiceTarget) {
+  if (target === "idea") {
+    return "venture idea";
+  }
+
+  if (target === "stage_note") {
+    return "stage context";
+  }
+
+  return "clarification answer";
+}
+
+function buildPageHeading(
+  phase: WorkflowPhase,
+  stage: IdeaStageValue | null,
+  questionIndex: number,
+  questionCount: number,
+  breakdown: AnalysisBreakdown | null,
+) {
+  if (phase === "define") {
+    return "BreakPoint AI venture intake";
+  }
+
+  if (phase === "calibrate") {
+    return "BreakPoint AI venture stage calibration";
+  }
+
+  if (phase === "clarify-loading") {
+    return "BreakPoint AI preparing clarification questions";
+  }
+
+  if (phase === "clarify") {
+    return `BreakPoint AI clarification question ${Math.min(questionIndex + 1, questionCount || 1)} of ${questionCount || 1}${
+      stage ? ` for ${getIdeaStageLabel(stage)}` : ""
+    }`;
+  }
+
+  if (phase === "processing") {
+    return "BreakPoint AI pressure test in progress";
+  }
+
+  if (phase === "verdict") {
+    return breakdown ? `BreakPoint AI verdict: ${breakdown.verdict}` : "BreakPoint AI verdict";
+  }
+
+  return breakdown ? `BreakPoint AI evaluation memo: ${breakdown.verdict}` : "BreakPoint AI evaluation memo";
+}
+
+function joinIds(...ids: Array<string | null | undefined>) {
+  const filtered = ids.filter(Boolean);
+  return filtered.length ? filtered.join(" ") : undefined;
+}
+
 type BreakpointSoundCue =
   | "tap"
   | "select"
@@ -618,7 +671,7 @@ function AdvisoryNotice({ flags, compact = false }: { flags: AdvisoryFlag[]; com
 
 function QuestionProgress({ current, total }: { current: number; total: number }) {
   return (
-    <div className="flex flex-col items-center gap-3">
+    <div className="flex flex-col items-center gap-3" aria-label={`Question ${current} of ${total}`} role="status">
       <div className="flex items-center gap-2.5">
         {Array.from({ length: total }).map((_, index) => {
           const number = index + 1;
@@ -641,6 +694,7 @@ function QuestionProgress({ current, total }: { current: number; total: number }
       <div className="font-mono text-[11px] uppercase tracking-[0.24em] text-foreground/46">
         Q{current} of {total}
       </div>
+      <span className="sr-only">Clarification progress: question {current} of {total}.</span>
     </div>
   );
 }
@@ -720,27 +774,41 @@ function ClarificationCard({
   answer,
   answerRef,
   current,
+  descriptionId,
+  errorId,
   interactive = true,
   onAnswerChange,
   onReset,
   onSubmit,
   question,
+  questionId,
   statusSlot,
+  statusId,
+  textareaId,
+  textareaInvalid,
   total,
   voiceControl,
 }: {
   answer: string;
   answerRef?: React.Ref<HTMLTextAreaElement>;
   current: number;
+  descriptionId?: string;
+  errorId?: string;
   interactive?: boolean;
   onAnswerChange?: (value: string) => void;
   onReset?: () => void;
   onSubmit?: () => void;
   question: string;
+  questionId?: string;
   statusSlot?: React.ReactNode;
+  statusId?: string;
+  textareaId?: string;
+  textareaInvalid?: boolean;
   total: number;
   voiceControl?: React.ReactNode;
 }) {
+  const labelId = textareaId ? `${textareaId}-label` : undefined;
+
   return (
     <Card className="overflow-hidden border-white/12 bg-[#0b0f15]/98 shadow-[0_28px_80px_rgba(0,0,0,0.28)]">
       <CardHeader className="pb-4">
@@ -755,25 +823,41 @@ function ClarificationCard({
             </div>
           </div>
         </div>
-        <CardTitle className="pr-2 text-[1.05rem] leading-[1.22] text-foreground [overflow-wrap:anywhere] sm:text-[1.26rem] lg:text-[1.4rem]">
+        <CardTitle
+          id={questionId}
+          className="pr-2 text-[1.05rem] leading-[1.22] text-foreground [overflow-wrap:anywhere] sm:text-[1.26rem] lg:text-[1.4rem]"
+        >
           {question}
         </CardTitle>
       </CardHeader>
       <CardContent>
+        {textareaId ? (
+          <label id={labelId} htmlFor={textareaId} className="sr-only">
+            Answer for question {current} of {total}
+          </label>
+        ) : null}
         <Textarea
+          id={textareaId}
           ref={answerRef}
           value={answer}
           onChange={(event) => onAnswerChange?.(event.target.value)}
           placeholder="Answer directly. No filler."
           disabled={!interactive}
+          aria-describedby={joinIds(questionId, descriptionId, statusId, errorId)}
+          aria-invalid={textareaInvalid || undefined}
+          aria-labelledby={joinIds(labelId, questionId)}
           className={cn(
             "min-h-[126px] border-white/8 bg-white/[0.02] text-[15px] leading-7",
             !interactive && "pointer-events-none opacity-80",
           )}
         />
-        {statusSlot ? <div className="mt-3">{statusSlot}</div> : null}
+        {statusSlot ? (
+          <div id={statusId} className="mt-3" aria-live="polite">
+            {statusSlot}
+          </div>
+        ) : null}
         <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0 text-sm leading-6 text-foreground/74">
+          <div id={descriptionId} className="min-w-0 text-sm leading-6 text-foreground/80">
             {interactive
               ? "This answer changes the final evaluation memo."
               : "The next prompt is moving into place."}
@@ -884,6 +968,75 @@ function OnboardingOverlay({
 }) {
   const Icon = step.icon;
   const isLastStep = stepIndex === totalSteps - 1;
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+
+    if (!dialog || typeof window === "undefined") {
+      return;
+    }
+
+    previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+    const frame = window.requestAnimationFrame(() => {
+      dialog.focus();
+    });
+
+    const getFocusableElements = () =>
+      Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((element) => element.offsetParent !== null && element.getAttribute("aria-hidden") !== "true");
+
+    const handleKeydown = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const focusableElements = getFocusableElements();
+
+      if (!focusableElements.length) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const first = focusableElements[0];
+      const last = focusableElements[focusableElements.length - 1];
+      const active = document.activeElement;
+
+      if (event.shiftKey) {
+        if (active === first || active === dialog) {
+          event.preventDefault();
+          last.focus();
+        }
+
+        return;
+      }
+
+      if (active === dialog) {
+        event.preventDefault();
+        first.focus();
+        return;
+      }
+
+      if (active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    dialog.addEventListener("keydown", handleKeydown);
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      dialog.removeEventListener("keydown", handleKeydown);
+      previousFocusRef.current?.focus?.();
+    };
+  }, []);
 
   return (
     <motion.div
@@ -894,6 +1047,7 @@ function OnboardingOverlay({
       className="fixed inset-0 z-[70] overflow-y-auto bg-[rgba(5,7,10,0.74)] px-3 py-3 backdrop-blur-md sm:px-4 sm:py-5"
     >
       <motion.div
+        ref={dialogRef}
         initial={{ opacity: 0, y: 24, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 18, scale: 0.98 }}
@@ -902,6 +1056,7 @@ function OnboardingOverlay({
         aria-modal="true"
         aria-labelledby="breakpoint-onboarding-title"
         aria-describedby="breakpoint-onboarding-body"
+        tabIndex={-1}
         transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
         className="relative mx-auto my-auto w-full max-w-[980px] overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(20,24,32,0.97),rgba(8,10,14,0.99))] shadow-[0_36px_120px_rgba(0,0,0,0.44)] sm:rounded-[32px]"
         style={{ maxHeight: "calc(100dvh - 1.5rem)" }}
@@ -1100,6 +1255,16 @@ export function BreakpointApp() {
   const decisionGuidance = breakdown ? buildDecisionGuidance(breakdown.invincibility_score, ideaStage) : "";
   const proofSummary = buildProofSummary(ideaStage);
   const activeOnboardingStep = onboardingSteps[onboardingStepIndex] ?? onboardingSteps[0];
+  const pageHeading = buildPageHeading(phase, ideaStage, currentQuestionIndex, questions.length, breakdown);
+  const errorId = error ? `workflow-error-${phase}` : undefined;
+  const ideaFieldInvalid = phase === "define" && Boolean(error?.includes("What are you thinking of building?"));
+  const stageFieldInvalid =
+    phase === "calibrate" && Boolean(error?.includes("Choose how developed the idea is before continuing"));
+  const answerFieldInvalid = phase === "clarify" && Boolean(error?.includes("Answer directly before moving"));
+  const clarifyFieldId = activeQuestion ? `clarify-answer-${currentQuestionIndex + 1}` : undefined;
+  const clarifyQuestionId = activeQuestion ? `clarify-question-${currentQuestionIndex + 1}` : undefined;
+  const clarifyDescriptionId = activeQuestion ? `clarify-answer-description-${currentQuestionIndex + 1}` : undefined;
+  const clarifyVoiceStatusId = activeQuestion ? `clarify-voice-status-${currentQuestionIndex + 1}` : undefined;
 
   function playSound(cue: BreakpointSoundCue) {
     if (!soundEnabledRef.current || typeof window === "undefined") {
@@ -1729,6 +1894,7 @@ export function BreakpointApp() {
         variant={active ? "danger" : "secondary"}
         onClick={() => toggleVoiceCapture(target)}
         disabled={!speechSupported}
+        aria-label={`${active ? "Stop" : "Start"} voice input for the ${getVoiceTargetLabel(target)} field`}
       >
         {active ? "Stop Voice" : "Voice Input"}
         {active ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
@@ -1736,13 +1902,13 @@ export function BreakpointApp() {
     );
   }
 
-  function renderVoiceStatus(target: VoiceTarget) {
+  function renderVoiceStatus(target: VoiceTarget, statusId?: string) {
     if (voiceTarget !== target) {
       return null;
     }
 
     return (
-      <div className="space-y-3">
+      <div id={statusId} className="space-y-3">
         {interimTranscript ? (
           <div className="rounded-full border border-[#ff4d4f]/18 bg-[#ff4d4f]/[0.08] px-3 py-1.5 text-xs text-[#ffb1b3]">
             Live transcript: {interimTranscript}
@@ -1759,6 +1925,12 @@ export function BreakpointApp() {
 
   return (
     <div className="relative min-h-[100dvh]">
+      <a
+        href="#breakpoint-main"
+        className="sr-only absolute left-3 top-3 z-[90] rounded-full border border-white/12 bg-[#0b0f15]/96 px-4 py-2 text-sm text-foreground shadow-[0_18px_50px_rgba(0,0,0,0.26)] focus:not-sr-only focus:outline-none focus:ring-2 focus:ring-[#4c8dff]/60"
+      >
+        Skip to main content
+      </a>
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute inset-0 bg-grid bg-[size:48px_48px] opacity-[0.035]" />
         <div className="absolute left-[-8rem] top-[-8rem] h-80 w-80 rounded-full bg-[#ff4d4f]/12 blur-3xl" />
@@ -1831,21 +2003,27 @@ export function BreakpointApp() {
           </div>
         </header>
 
-        <div className={cn(phase === "define" ? "hidden sm:block" : "")}>
+        <nav aria-label="Workflow progress" className={cn(phase === "define" ? "hidden sm:block" : "")}>
           <StepProgress currentStep={currentStep} />
-        </div>
+        </nav>
 
         {error ? (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-3 shrink-0 rounded-[22px] border border-[#ff4d4f]/20 bg-[#ff4d4f]/10 px-4 py-3 text-sm text-foreground"
-          >
-            {error}
-          </motion.div>
+          <section aria-label="Status message" className="mb-3 shrink-0">
+            <motion.div
+              id={errorId}
+              role="alert"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-[22px] border border-[#ff4d4f]/20 bg-[#ff4d4f]/10 px-4 py-3 text-sm text-foreground"
+            >
+              {error}
+            </motion.div>
+          </section>
         ) : null}
 
         <motion.main
+          id="breakpoint-main"
+          aria-labelledby="breakpoint-page-title"
           className={cn(
             "bp-main min-h-[520px] min-w-0",
             allowsStageScroll
@@ -1855,6 +2033,9 @@ export function BreakpointApp() {
           )}
           initial={false}
         >
+          <h1 id="breakpoint-page-title" className="sr-only">
+            {pageHeading}
+          </h1>
           <AnimatePresence mode="wait">
             {phase === "define" ? (
               <motion.section
@@ -1901,22 +2082,38 @@ export function BreakpointApp() {
                           variant={isListening && voiceTarget === "idea" ? "danger" : "secondary"}
                           onClick={() => toggleVoiceCapture("idea")}
                           disabled={!speechSupported}
+                          aria-label={`${
+                            isListening && voiceTarget === "idea" ? "Stop" : "Start"
+                          } voice input for the venture idea field`}
                           className="whitespace-normal"
                         >
                           {isListening && voiceTarget === "idea" ? "Stop Voice" : "Voice Input"}
                           {isListening && voiceTarget === "idea" ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                         </Button>
                       </div>
+                      <label htmlFor="venture-intake-field" className="sr-only">
+                        Describe the venture idea, business model, or investment thesis.
+                      </label>
                       <Textarea
+                        id="venture-intake-field"
                         ref={ideaTextareaRef}
                         value={idea}
                         onChange={(event) => setIdea(event.target.value)}
                         placeholder="Describe the venture, who pays, why they switch, how it reaches the market, and what has to be true."
+                        aria-describedby={joinIds(
+                          "venture-intake-hint",
+                          "venture-intake-helper",
+                          voiceTarget === "idea" ? "venture-intake-voice-status" : undefined,
+                          ideaFieldInvalid ? errorId : undefined,
+                        )}
+                        aria-invalid={ideaFieldInvalid || undefined}
                         className="bp-idea-textarea mt-4 min-h-[220px] border-white/8 bg-white/[0.02] text-[15px] leading-7"
                       />
 
-                      <div className="mt-3">{renderVoiceStatus("idea")}</div>
-                      <p className="mt-3 text-sm leading-6 text-foreground/56">
+                      <div id="venture-intake-hint" className="mt-3">
+                        {renderVoiceStatus("idea", "venture-intake-voice-status")}
+                      </div>
+                      <p id="venture-intake-helper" className="mt-3 text-sm leading-6 text-foreground/68">
                         Start with the buyer, the offer, and why this wins instead of getting ignored.
                       </p>
                     </div>
@@ -1998,40 +2195,49 @@ export function BreakpointApp() {
                       <p className="mt-2 whitespace-pre-wrap break-words text-foreground/84">{idea}</p>
                     </div>
 
-                    <div className="grid w-full max-w-[940px] gap-3 md:grid-cols-2 lg:grid-cols-3">
-                      {ideaStages.map((stage) => {
-                        const selected = ideaStage === stage.value;
+                    <fieldset className="w-full max-w-[940px]" aria-describedby={joinIds("idea-stage-helper", stageFieldInvalid ? errorId : undefined)}>
+                      <legend id="idea-stage-legend" className="sr-only">
+                        Choose how developed the idea is right now.
+                      </legend>
+                      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                        {ideaStages.map((stage) => {
+                          const selected = ideaStage === stage.value;
 
-                        return (
-                          <button
-                            key={stage.value}
-                            type="button"
-                            onClick={() => {
-                              playSound("select");
-                              setIdeaStage(stage.value);
-                              setError(null);
-                            }}
-                            className={cn(
-                              "rounded-[24px] border px-4 py-4 text-left transition-all duration-200",
-                              selected
-                                ? "border-[#4c8dff]/30 bg-[#4c8dff]/10 shadow-[0_0_0_1px_rgba(76,141,255,0.16),0_16px_42px_rgba(10,18,32,0.22)]"
-                                : "border-white/10 bg-white/[0.035] hover:-translate-y-0.5 hover:border-white/16 hover:bg-white/[0.05]",
-                            )}
-                          >
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="min-w-0 break-words font-medium tracking-[-0.025em] text-foreground">{stage.label}</div>
-                              <div
-                                className={cn(
-                                  "h-2.5 w-2.5 rounded-full transition-colors",
-                                  selected ? "bg-[#4c8dff]" : "bg-white/20",
-                                )}
-                              />
-                            </div>
-                            <p className="mt-3 text-sm leading-6 text-foreground/68">{stage.hint}</p>
-                          </button>
-                        );
-                      })}
-                    </div>
+                          return (
+                            <button
+                              key={stage.value}
+                              type="button"
+                              aria-pressed={selected}
+                              onClick={() => {
+                                playSound("select");
+                                setIdeaStage(stage.value);
+                                setError(null);
+                              }}
+                              className={cn(
+                                "rounded-[24px] border px-4 py-4 text-left transition-all duration-200",
+                                selected
+                                  ? "border-[#4c8dff]/30 bg-[#4c8dff]/10 shadow-[0_0_0_1px_rgba(76,141,255,0.16),0_16px_42px_rgba(10,18,32,0.22)]"
+                                  : "border-white/10 bg-white/[0.035] hover:-translate-y-0.5 hover:border-white/16 hover:bg-white/[0.05]",
+                              )}
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="min-w-0 break-words font-medium tracking-[-0.025em] text-foreground">{stage.label}</div>
+                                <div
+                                  className={cn(
+                                    "h-2.5 w-2.5 rounded-full transition-colors",
+                                    selected ? "bg-[#4c8dff]" : "bg-white/20",
+                                  )}
+                                />
+                              </div>
+                              <p className="mt-3 text-sm leading-6 text-foreground/72">{stage.hint}</p>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p id="idea-stage-helper" className="sr-only">
+                        Choose one stage so BreakPoint can ask the right level of pressure questions.
+                      </p>
+                    </fieldset>
 
                     <div className="w-full max-w-[940px] rounded-[26px] border border-white/10 bg-[#0b0f15]/92 p-4">
                       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -2045,15 +2251,23 @@ export function BreakpointApp() {
                         </div>
                         {renderVoiceButton("stage_note")}
                       </div>
+                      <label htmlFor="stage-note-field" className="sr-only">
+                        Anything else the system should know before applying pressure?
+                      </label>
                       <Textarea
+                        id="stage-note-field"
                         ref={stageNoteTextareaRef}
                         value={stageNote}
                         onChange={(event) => setStageNote(event.target.value.slice(0, 240))}
                         placeholder="Optional context: market, audience, current traction, constraints, or what still feels unclear."
+                        aria-describedby={joinIds(
+                          "stage-note-helper",
+                          voiceTarget === "stage_note" ? "stage-note-voice-status" : undefined,
+                        )}
                         className="mt-3 min-h-[88px] border-white/8 bg-white/[0.02] text-[14px] leading-6"
                       />
-                      <div className="mt-3">{renderVoiceStatus("stage_note")}</div>
-                      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-foreground/48">
+                      <div className="mt-3">{renderVoiceStatus("stage_note", "stage-note-voice-status")}</div>
+                      <div id="stage-note-helper" className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-foreground/58">
                         <span>Optional. Keep it short and direct.</span>
                         <span>{stageNote.trim().length} / 240</span>
                       </div>
@@ -2163,12 +2377,22 @@ export function BreakpointApp() {
                             answer={currentAnswer}
                             answerRef={clarifyTextareaRef}
                             current={currentQuestionIndex + 1}
+                            descriptionId={clarifyDescriptionId}
+                            errorId={answerFieldInvalid ? errorId : undefined}
                             interactive={!leavingQuestion && !pendingFinalAnalysis}
                             onAnswerChange={setCurrentAnswer}
                             onReset={resetWorkflow}
                             onSubmit={submitCurrentQuestion}
                             question={activeQuestion}
-                            statusSlot={!leavingQuestion && !pendingFinalAnalysis ? renderVoiceStatus("clarify") : null}
+                            questionId={clarifyQuestionId}
+                            statusId={clarifyVoiceStatusId}
+                            statusSlot={
+                              !leavingQuestion && !pendingFinalAnalysis
+                                ? renderVoiceStatus("clarify", clarifyVoiceStatusId)
+                                : null
+                            }
+                            textareaId={clarifyFieldId}
+                            textareaInvalid={answerFieldInvalid}
                             total={questions.length}
                             voiceControl={!leavingQuestion && !pendingFinalAnalysis ? renderVoiceButton("clarify") : null}
                           />

@@ -13,7 +13,7 @@
     --secondary: 220 13% 18%;
     --secondary-foreground: 216 27% 92%;
     --muted: 220 12% 18%;
-    --muted-foreground: 217 12% 64%;
+    --muted-foreground: 217 14% 70%;
     --border: 220 13% 18%;
     --input: 220 14% 18%;
     --ring: 218 100% 65%;
@@ -37,6 +37,12 @@
     min-height: 100%;
   }
 
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+
   body {
     background:
       radial-gradient(circle at 14% 12%, rgba(255, 77, 79, 0.12), transparent 0 26%),
@@ -47,6 +53,8 @@
       #0f1115;
     font-family: "Space Grotesk", sans-serif;
     color: #e6eaf0;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
     min-height: 100%;
     min-height: 100dvh;
     overflow-x: hidden;
